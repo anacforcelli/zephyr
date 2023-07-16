@@ -1,0 +1,19 @@
+# nRF52840 DK NRF52840 board configuration
+
+# Copyright (c) 2016 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_PULGA
+
+config BOARD
+	default "pulga"
+
+config BT_CTLR
+	default BT
+
+# TODO
+# if sensors
+# config_bme280
+# config bmi160
+
+endif # BOARD_PULGA
