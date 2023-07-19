@@ -1,0 +1,12 @@
+# Copyright (c) 2023 LSI-TEC
+
+# SPDX-License-Identifier: Apache-2.0
+
+if SHIELD_PULGA_LORA
+
+# config sx127x // TODO is this the right one?
+#    default y
+
+# TODO config lorawan?
+
+endif

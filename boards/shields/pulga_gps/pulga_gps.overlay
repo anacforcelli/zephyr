@@ -1,0 +1,14 @@
+/*
+ * Copyright (c) 2023 LSI-TEC
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&uart1 {
+	status = "okay";
+
+	gps {
+		// TODO compatible = "u-blox?";
+		// TODO current_speed = <x>; (only if the gps device runs at a speed different from 115200)
+	};
+};

@@ -1,0 +1,20 @@
+identifier: pulga
+name: Pulga Core V3.0
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - ble
+  - counter
+  - gpio
+  - i2c
+  - i2s
+  - pwm
+  - spi
+  - watchdog
