@@ -27,11 +27,11 @@
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio0 13 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
 			label = "LED 0";
 		};
 		led1: led_1 {
-			gpios = <&gpio0 14 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
 			label = "LED 1";
 		};
 	};
@@ -39,42 +39,28 @@
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
-			gpios = <&gpio0 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio0 11 (GPIO_PULL_DOWN | GPIO_ACTIVE_LOW)>;
 			label = "Button 0";
 		};
 		button1: button_1 {
-			gpios = <&gpio0 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio0 12 (GPIO_PULL_DOWN | GPIO_ACTIVE_LOW)>;
 			label = "Button 1";
 		};
 	};
 
 	connector {
-		compatible = "arduino-header-r3"; // TODO remap according to actually disponible GPIOS
+		//compatible = "pulga_header"; // TODO remap according to actually disponible GPIOS
 		#gpio-cells = <2>;
-		gpio-map-mask = <0xffffffff 0xffffffc0>;
-		gpio-map-pass-thru = <0 0x3f>;
-		gpio-map = <0 0 &gpio0 3 0>,	/* A0 */
-			   <1 0 &gpio0 4 0>,	/* A1 */
-			   <2 0 &gpio0 28 0>,	/* A2 */
-			   <3 0 &gpio0 29 0>,	/* A3 */
-			   <4 0 &gpio0 30 0>,	/* A4 */
-			   <5 0 &gpio0 31 0>,	/* A5 */
-			   <6 0 &gpio1 1 0>,	/* D0 */
-			   <7 0 &gpio1 2 0>,	/* D1 */
-			   <8 0 &gpio1 3 0>,	/* D2 */
-			   <9 0 &gpio1 4 0>,	/* D3 */
-			   <10 0 &gpio1 5 0>,	/* D4 */
-			   <11 0 &gpio1 6 0>,	/* D5 */
-			   <12 0 &gpio1 7 0>,	/* D6 */
-			   <13 0 &gpio1 8 0>,	/* D7 */
-			   <14 0 &gpio1 10 0>,	/* D8 */
-			   <15 0 &gpio1 11 0>,	/* D9 */
-			   <16 0 &gpio1 12 0>,	/* D10 */
-			   <17 0 &gpio1 13 0>,	/* D11 */
-			   <18 0 &gpio1 14 0>,	/* D12 */
-			   <19 0 &gpio1 15 0>,	/* D13 */
-			   <20 0 &gpio0 26 0>,	/* D14 */
-			   <21 0 &gpio0 27 0>;	/* D15 */
+		//gpio-map-mask = <0xffffffff 0xffffffc0>; // TODO learn how do these work
+		//gpio-map-pass-thru = <0 0x3f>;
+		gpio-map = <0 0 &gpio0 25 0>,	 
+			   <1 0 &gpio0 2 0>,	
+			   <2 0 &gpio0 3 0>,	
+			   <3 0 &gpio0 28 0>,
+			   <4 0 &gpio0 29 0>,	
+			   <5 0 &gpio0 30 0>,	
+			   <6 0 &gpio0 31 0>,	
+			   <7 0 &gpio1 7 0>;
 	};
 
 	/* These aliases are provided for compatibility with samples */
@@ -117,14 +103,24 @@
 
 &i2c0 {
 	compatible = "nordic,nrf-twi";
-	status = "okay";
+	status = "disabled";
 	pinctrl-0 = <&i2c0_default>;
 	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&i2c1 {
+	compatible = "nordic,nrf-twi";
+	status = "okay";
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-1 = <&i2c1_sleep>;
 	pinctrl-names = "default", "sleep";
 
 	bmi160: bmi160@d8 {
 		reg = <0xd8>;
 		compatible = "bosch,bmi160";
+		int-gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>, <&gpio0 19 GPIO_ACTIVE_HIGH>;
+		//interrupt-names = "int1", "int2";
 		status = "okay";
 	};
 
@@ -133,15 +129,8 @@
 		compatible = "bosch,bme280";
 		status = "okay";
 	};
-};
 
-&i2c1 {
-	compatible = "nordic,nrf-twi";
-	/* Cannot be used together with spi1 */
-	/* status = "okay"; */
-	pinctrl-0 = <&i2c1_default>;
-	pinctrl-1 = <&i2c1_sleep>;
-	pinctrl-names = "default", "sleep";
+	// TODO si1133
 };
 
 /*
@@ -154,8 +143,7 @@
 
 &spi0 {
 	compatible = "nordic,nrf-spi";
-	/* Cannot be used together with i2c0. */
-	/* status = "okay"; */
+	status = "okay";
 	pinctrl-0 = <&spi0_default>;
 	pinctrl-1 = <&spi0_sleep>;
 	pinctrl-names = "default", "sleep";
@@ -163,17 +151,9 @@
 
 &spi1 {
 	compatible = "nordic,nrf-spi";
-	status = "okay";
+	status = "disabled";
 	pinctrl-0 = <&spi1_default>;
 	pinctrl-1 = <&spi1_sleep>;
-	pinctrl-names = "default", "sleep";
-};
-
-&spi2 {
-	compatible = "nordic,nrf-spi";
-	status = "disabled";
-	pinctrl-0 = <&spi2_default>;
-	pinctrl-1 = <&spi2_sleep>;
 	pinctrl-names = "default", "sleep";
 };
 

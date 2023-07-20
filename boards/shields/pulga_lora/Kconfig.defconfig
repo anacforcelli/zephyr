@@ -4,9 +4,8 @@
 
 if SHIELD_PULGA_LORA
 
-# config sx127x // TODO is this the right one?
-#    default y
+config LORA_SX127X # TODO should I set more stuff?
+    default y
 
-# TODO config lorawan?
 
-endif
+endif # SHIELD_PULGA_LORA

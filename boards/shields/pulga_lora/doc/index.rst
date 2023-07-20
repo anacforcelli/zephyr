@@ -1,11 +1,12 @@
-.. _semtech_sx1272mb2das:
+.. _pulga_lora:
 
 Pulga LoRa Shield
 ################################
 
 Overview
 ********
-
+The Pulga LoRa shield uses an SX1272 transceiver through SPI
+in a shield board with the same form-factor as the main board.
 
 Pin Assignment
 =======================================================
@@ -15,7 +16,7 @@ Pin Assignment
 +=======================+=================+
 |                    | SX1272 RESET    |
 +-----------------------+-----------------+
-|                  | SX1272 DIO0     |
+|                   | SX1272 DIO0     |
 +-----------------------+-----------------+
 |                    | SX1272 SPI NSS  |
 +-----------------------+-----------------+
@@ -27,21 +28,18 @@ Pin Assignment
 +-----------------------+-----------------+
 
 
-Requirements
-************
-
 Programming
 ***********
 
 Set ``-DSHIELD=pulga_lora`` when you invoke ``west build``. For
 example:
 
+``$ west build -b pulga -- -DSHIELD=pulga_lora``
+
+or
+
 .. zephyr-app-commands::
    :zephyr-app: samples/lorawan/class_a
    :board: pulga
    :shield: pulga_lora
    :goals: build
-
-References
-**********
-lol nope

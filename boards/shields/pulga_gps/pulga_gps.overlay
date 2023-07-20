@@ -8,7 +8,7 @@
 	status = "okay";
 
 	gps {
-		// TODO compatible = "u-blox?";
-		// TODO current_speed = <x>; (only if the gps device runs at a speed different from 115200)
+		// TODO compatible = "quectel,l86"; // whoops, there's no driver for that! (yet)
+		current_speed = <9600>; // (default)
 	};
 };
