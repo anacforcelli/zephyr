@@ -299,9 +299,8 @@ structure in the main Zephyr tree: boards/<arch>/<board_name>/""")
 
     parser.add_argument("--coverage-formats", action="store", default=None, # default behavior is set in run_coverage
                         help="Output formats to use for generated coverage reports, as a comma-separated list. "
-                             "Only used in conjunction with gcovr. "
                              "Default to html. "
-                             "Valid options are html, xml, csv, txt, coveralls, sonarqube.")
+                             "Valid options are html, xml, csv, txt, coveralls, sonarqube, lcov.")
 
     parser.add_argument("--test-config", action="store", default=os.path.join(ZEPHYR_BASE, "tests", "test_config.yaml"),
         help="Path to file with plans and test configurations.")
@@ -741,11 +740,6 @@ def parse_arguments(parser, args, options = None):
         logger.error("--shuffle-tests-seed requires --shuffle-tests")
         sys.exit(1)
 
-    if options.coverage_formats and (options.coverage_tool != "gcovr"):
-        logger.error("""--coverage-formats can only be used when coverage
-                        tool is set to gcovr""")
-        sys.exit(1)
-
     if options.size:
         from twisterlib.size_calc import SizeCalculator
         for fn in options.size:
@@ -797,6 +791,7 @@ class TwisterEnv:
         self.commit_date = None
         self.run_date = None
         self.options = options
+
         if options and options.ninja:
             self.generator_cmd = "ninja"
             self.generator = "Ninja"
@@ -805,10 +800,8 @@ class TwisterEnv:
             self.generator = "Unix Makefiles"
         logger.info(f"Using {self.generator}..")
 
-        if options:
-            self.test_roots = options.testsuite_root
-        else:
-            self.test_roots = None
+        self.test_roots = options.testsuite_root if options else None
+
         if options:
             if not isinstance(options.board_root, list):
                 self.board_roots = [self.options.board_root]
@@ -821,9 +814,9 @@ class TwisterEnv:
 
         self.hwm = None
 
-        self.test_config = options.test_config
+        self.test_config = options.test_config if options else None
 
-        self.alt_config_root = options.alt_config_root
+        self.alt_config_root = options.alt_config_root if options else None
 
     def discover(self):
         self.check_zephyr_version()
@@ -843,7 +836,7 @@ class TwisterEnv:
                     logger.info(f"Zephyr version: {self.version}")
                 else:
                     self.version = "Unknown"
-                    logger.error("Coult not determine version")
+                    logger.error("Could not determine version")
         except OSError:
             logger.info("Cannot read zephyr version.")
 
@@ -889,7 +882,7 @@ class TwisterEnv:
         out = ansi_escape.sub('', out.decode())
 
         if p.returncode == 0:
-            msg = "Finished running  %s" % (args[0])
+            msg = "Finished running %s" % (args[0])
             logger.debug(msg)
             results = {"returncode": p.returncode, "msg": msg, "stdout": out}
 
