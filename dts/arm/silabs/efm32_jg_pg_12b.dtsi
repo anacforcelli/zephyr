@@ -26,7 +26,7 @@
 	};
 
 	sram0: memory@20000000 {
-	       compatible = "mmio-sram";
+		compatible = "mmio-sram";
 	};
 
 	soc {
@@ -252,6 +252,14 @@
 			frequency = <16000000>;
 			status = "disabled";
 			#io-channel-cells = <1>;
+		};
+
+		pinctrl: pin-controller {
+			/* Pin controller is a "virtual" device since SiLabs SoCs do pin
+			 * control in a distributed way (GPIO registers and PSEL
+			 * registers on each peripheral).
+			 */
+			compatible = "silabs,gecko-pinctrl";
 		};
 	};
 };

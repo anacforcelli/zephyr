@@ -66,7 +66,7 @@ Below, ``<build>`` means your build directory.
 
 To find the devicetree node you need to check, use the number ``<N>`` from the
 linker error. Look for this number in the list of nodes at the top of
-:file:`<build>/zephyr/include/generated/devicetree_generated.h`. For example, if
+:file:`<build>/zephyr/include/generated/zephyr/devicetree_generated.h`. For example, if
 ``<N>`` is 15, and your :file:`devicetree_generated.h` file looks like this,
 the node you are interested in is ``/soc/i2c@deadbeef``:
 
@@ -193,7 +193,7 @@ as you enable the devicetree node. Otherwise, it is sometimes as simple as
 adding a line like this to your application's :file:`prj.conf` file and then
 making sure to :ref:`dt-trouble-try-pristine`:
 
-.. code-block:: none
+.. code-block:: cfg
 
    CONFIG_FOO=y
 

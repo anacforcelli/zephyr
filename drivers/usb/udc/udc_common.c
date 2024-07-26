@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <zephyr/init.h>
 #include <zephyr/kernel.h>
 #include <zephyr/net/buf.h>
 #include <zephyr/sys/byteorder.h>
@@ -173,10 +174,6 @@ int udc_submit_event(const struct device *dev,
 		.status = status,
 		.dev = dev,
 	};
-
-	if (!udc_is_initialized(dev)) {
-		return -EPERM;
-	}
 
 	return data->event_cb(dev, &drv_evt);
 }

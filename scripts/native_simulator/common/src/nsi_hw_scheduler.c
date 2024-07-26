@@ -19,18 +19,15 @@
 #include "nsi_main.h"
 #include "nsi_safe_call.h"
 #include "nsi_hw_scheduler.h"
+#include "nsi_hws_models_if.h"
 
-static uint64_t simu_time; /* The actual time as known by the HW models */
+uint64_t nsi_simu_time; /* The actual time as known by the HW models */
 static uint64_t end_of_time = NSI_NEVER; /* When will this device stop */
 
-extern uint64_t *__nsi_hw_events_timers_start[];
-extern uint64_t *__nsi_hw_events_timers_end[];
+extern struct nsi_hw_event_st __nsi_hw_events_start[];
+extern struct nsi_hw_event_st __nsi_hw_events_end[];
 
-extern void (*__nsi_hw_events_callbacks_start[])(void);
-extern void (*__nsi_hw_events_callbacks_end[])(void);
-
-static unsigned int number_of_timers;
-static unsigned int number_of_callbacks;
+static unsigned int number_of_events;
 
 static unsigned int next_timer_index;
 static uint64_t next_timer_time;
@@ -58,7 +55,7 @@ static void nsi_hws_signal_end_handler(int sig)
  * Therefore we set SA_RESETHAND: This way, the 2nd time the signal is received
  * the default handler would be called to terminate the program no matter what.
  *
- * Note that SA_RESETHAND requires either _POSIX_C_SOURCE>=200809 or
+ * Note that SA_RESETHAND requires either _POSIX_C_SOURCE>=200809L or
  * _XOPEN_SOURCE>=500
  */
 static void nsi_hws_set_sig_handler(void)
@@ -77,21 +74,21 @@ static void nsi_hws_set_sig_handler(void)
 
 static void nsi_hws_sleep_until_next_event(void)
 {
-	if (next_timer_time >= simu_time) { /* LCOV_EXCL_BR_LINE */
-		simu_time = next_timer_time;
+	if (next_timer_time >= nsi_simu_time) { /* LCOV_EXCL_BR_LINE */
+		nsi_simu_time = next_timer_time;
 	} else {
 		/* LCOV_EXCL_START */
 		nsi_print_warning("next_timer_time corrupted (%"PRIu64"<= %"
 				PRIu64", timer idx=%i)\n",
 				(uint64_t)next_timer_time,
-				(uint64_t)simu_time,
+				(uint64_t)nsi_simu_time,
 				next_timer_index);
 		/* LCOV_EXCL_STOP */
 	}
 
-	if (signaled_end || (simu_time > end_of_time)) {
+	if (signaled_end || (nsi_simu_time > end_of_time)) {
 		nsi_print_trace("\nStopped at %.3Lfs\n",
-				((long double)simu_time)/1.0e6L);
+				((long double)nsi_simu_time)/1.0e6L);
 		nsi_exit(0);
 	}
 }
@@ -104,14 +101,19 @@ static void nsi_hws_sleep_until_next_event(void)
 void nsi_hws_find_next_event(void)
 {
 	next_timer_index = 0;
-	next_timer_time  = *__nsi_hw_events_timers_start[0];
+	next_timer_time  = *__nsi_hw_events_start[0].timer;
 
-	for (unsigned int i = 1; i < number_of_timers ; i++) {
-		if (next_timer_time > *__nsi_hw_events_timers_start[i]) {
+	for (unsigned int i = 1; i < number_of_events ; i++) {
+		if (next_timer_time > *__nsi_hw_events_start[i].timer) {
 			next_timer_index = i;
-			next_timer_time = *__nsi_hw_events_timers_start[i];
+			next_timer_time = *__nsi_hw_events_start[i].timer;
 		}
 	}
+}
+
+uint64_t nsi_hws_get_next_event_time(void)
+{
+	return next_timer_time;
 }
 
 /**
@@ -122,8 +124,8 @@ void nsi_hws_one_event(void)
 {
 	nsi_hws_sleep_until_next_event();
 
-	if (next_timer_index < number_of_timers) { /* LCOV_EXCL_BR_LINE */
-		__nsi_hw_events_callbacks_start[next_timer_index]();
+	if (next_timer_index < number_of_events) { /* LCOV_EXCL_BR_LINE */
+		__nsi_hw_events_start[next_timer_index].callback();
 	} else {
 		nsi_print_error_and_exit("next_timer_index corrupted\n"); /* LCOV_EXCL_LINE */
 	}
@@ -140,14 +142,6 @@ void nsi_hws_set_end_of_time(uint64_t new_end_of_time)
 }
 
 /**
- * Return the current simulated time as known by the device
- */
-uint64_t nsi_hws_get_time(void)
-{
-	return simu_time;
-}
-
-/**
  * Function to initialize the HW scheduler
  *
  * Note that the HW models should register their initialization functions
@@ -155,16 +149,7 @@ uint64_t nsi_hws_get_time(void)
  */
 void nsi_hws_init(void)
 {
-	number_of_timers =
-		(__nsi_hw_events_timers_end - __nsi_hw_events_timers_start);
-	number_of_callbacks =
-		(__nsi_hw_events_callbacks_end - __nsi_hw_events_callbacks_start);
-
-	/* LCOV_EXCL_START */
-	if (number_of_timers != number_of_callbacks || number_of_timers == 0) {
-		nsi_print_error_and_exit("number_of_timers corrupted\n");
-	}
-	/* LCOV_EXCL_STOP */
+	number_of_events = __nsi_hw_events_end - __nsi_hw_events_start;
 
 	nsi_hws_set_sig_handler();
 	nsi_hws_find_next_event();

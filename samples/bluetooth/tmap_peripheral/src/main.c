@@ -24,20 +24,15 @@
 
 #include "tmap_peripheral.h"
 
-#define AVAILABLE_SINK_CONTEXT  (BT_AUDIO_CONTEXT_TYPE_UNSPECIFIED | \
-				 BT_AUDIO_CONTEXT_TYPE_CONVERSATIONAL | \
-				 BT_AUDIO_CONTEXT_TYPE_MEDIA | \
-				 BT_AUDIO_CONTEXT_TYPE_GAME | \
-				 BT_AUDIO_CONTEXT_TYPE_INSTRUCTIONAL)
-
 static struct bt_conn *default_conn;
 static struct k_work_delayable call_terminate_set_work;
 static struct k_work_delayable media_pause_set_work;
 
 static uint8_t unicast_server_addata[] = {
-	BT_UUID_16_ENCODE(BT_UUID_ASCS_VAL), /* ASCS UUID */
+	BT_UUID_16_ENCODE(BT_UUID_ASCS_VAL),    /* ASCS UUID */
 	BT_AUDIO_UNICAST_ANNOUNCEMENT_TARGETED, /* Target Announcement */
 	BT_BYTES_LIST_LE16(AVAILABLE_SINK_CONTEXT),
+	BT_BYTES_LIST_LE16(AVAILABLE_SOURCE_CONTEXT),
 	0x00, /* Metadata length */
 };
 
@@ -47,8 +42,8 @@ static const uint8_t cap_addata[] = {
 };
 
 static uint8_t tmap_addata[] = {
-	BT_UUID_16_ENCODE(BT_UUID_TMAS_VAL), /* TMAS UUID */
-	(BT_TMAP_ROLE_UMR | BT_TMAP_ROLE_CT), 0x00, /* TMAP Role */
+	BT_UUID_16_ENCODE(BT_UUID_TMAS_VAL),                    /* TMAS UUID */
+	BT_BYTES_LIST_LE16(BT_TMAP_ROLE_UMR | BT_TMAP_ROLE_CT), /* TMAP Role */
 };
 
 static uint8_t csis_rsi_addata[BT_CSIP_RSI_SIZE];
@@ -57,7 +52,8 @@ static bool peer_is_ums;
 
 static const struct bt_data ad[] = {
 	BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE, 0x09, 0x41), /* Appearance - Earbud */
+	BT_DATA_BYTES(BT_DATA_GAP_APPEARANCE,
+		      BT_BYTES_LIST_LE16(BT_APPEARANCE_WEARABLE_AUDIO_DEVICE_EARBUD)),
 	BT_DATA_BYTES(BT_DATA_UUID16_SOME, BT_UUID_16_ENCODE(BT_UUID_ASCS_VAL),
 		      BT_UUID_16_ENCODE(BT_UUID_CAS_VAL), BT_UUID_16_ENCODE(BT_UUID_TMAS_VAL)),
 #if defined(CONFIG_BT_CSIP_SET_MEMBER)
@@ -66,6 +62,7 @@ static const struct bt_data ad[] = {
 	BT_DATA(BT_DATA_SVC_DATA16, tmap_addata, ARRAY_SIZE(tmap_addata)),
 	BT_DATA(BT_DATA_SVC_DATA16, cap_addata, ARRAY_SIZE(cap_addata)),
 	BT_DATA(BT_DATA_SVC_DATA16, unicast_server_addata, ARRAY_SIZE(unicast_server_addata)),
+	BT_DATA(BT_DATA_NAME_COMPLETE, CONFIG_BT_DEVICE_NAME, sizeof(CONFIG_BT_DEVICE_NAME) - 1),
 };
 
 static K_SEM_DEFINE(sem_connected, 0, 1);
@@ -247,7 +244,7 @@ int main(void)
 	}
 	printk("BAP initialized\n");
 
-	err = bt_le_ext_adv_create(BT_LE_EXT_ADV_CONN_NAME, &adv_cb, &adv);
+	err = bt_le_ext_adv_create(BT_LE_EXT_ADV_CONN, &adv_cb, &adv);
 	if (err) {
 		printk("Failed to create advertising set (err %d)\n", err);
 		return err;

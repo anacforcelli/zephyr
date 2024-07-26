@@ -8,7 +8,8 @@
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/drivers/gpio.h>
-#include "esp_sleep.h"
+#include <esp_sleep.h>
+#include <driver/gpio.h>
 
 /* Most development boards have "boot" button attached to GPIO0.
  * You can also change this to another pin.
@@ -29,7 +30,7 @@ static const struct gpio_dt_spec button =
 
 int main(void)
 {
-	if (!device_is_ready(button.port)) {
+	if (!gpio_is_ready_dt(&button)) {
 		printk("Error: button device %s is not ready\n", button.port->name);
 		return 0;
 	}

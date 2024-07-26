@@ -96,7 +96,7 @@ static void it8xxx2_sha256_init(bool init_k)
 	}
 	/* Initialize array of round constants */
 	if (init_k) {
-		for (int i = 0; i < ARRAY_SIZE(sha256_k); i++) {
+		for (i = 0; i < ARRAY_SIZE(sha256_k); i++) {
 			chip_ctx.k[i] = sha256_k[i];
 		}
 	}
@@ -215,7 +215,7 @@ static int it8xxx2_sha_init(const struct device *dev)
 	return 0;
 }
 
-static struct crypto_driver_api it8xxx2_crypto_api = {
+static const struct crypto_driver_api it8xxx2_crypto_api = {
 	.hash_begin_session = it8xxx2_hash_begin_session,
 	.hash_free_session = it8xxx2_hash_session_free,
 	.query_hw_caps = it8xxx2_query_hw_caps,

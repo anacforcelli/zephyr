@@ -9,7 +9,7 @@ Introduction
 ============
 
 This Sphinx plugin can be used to run Doxygen build as part of the Sphinx build
-process. It is meant to be used with other plugins such as ``docleaf`` in order
+process. It is meant to be used with other plugins such as ``breathe`` in order
 to improve the user experience. The principal features offered by this plugin
 are:
 
@@ -362,8 +362,8 @@ def doxygen_build(app: Sphinx) -> None:
     )
 
     logger.info("Checking if Doxygen needs to be run...")
-    changed = doxygen_input_has_changed(app.env, doxyfile)
-    if not changed:
+    app.env.doxygen_input_changed = doxygen_input_has_changed(app.env, doxyfile)
+    if not app.env.doxygen_input_changed:
         logger.info("Doxygen build will be skipped (no changes)!")
         return
 

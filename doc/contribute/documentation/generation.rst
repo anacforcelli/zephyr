@@ -52,7 +52,7 @@ The project's documentation contains the following items:
       header [shape="rectangle" label="c header\ncomments"]
       xml [shape="rectangle" label="XML"]
       html [shape="rectangle" label="HTML\nweb site"]
-      sphinx[shape="ellipse" label="sphinx +\ndocleaf,\ndocutils"]
+      sphinx[shape="ellipse" label="sphinx +\nbreathe,\ndocutils"]
       images -> sphinx
       rst -> sphinx
       conf -> sphinx
@@ -65,7 +65,7 @@ The project's documentation contains the following items:
 
 
 The reStructuredText files are processed by the Sphinx documentation system,
-and make use of the docleaf extension for including the doxygen-generated API
+and make use of the breathe extension for including the doxygen-generated API
 material.  Additional tools are required to generate the
 documentation locally, as described in the following sections.
 
@@ -93,50 +93,69 @@ as described below:
 
    .. group-tab:: Linux
 
+      Common to all Linux installations, install the Python dependencies
+      required to build the documentation:
+
+      .. code-block:: console
+
+         pip install -U -r ~/zephyrproject/zephyr/doc/requirements.txt
+
       On Ubuntu Linux:
 
       .. code-block:: console
 
          sudo apt-get install --no-install-recommends doxygen graphviz librsvg2-bin \
-         texlive-latex-base texlive-latex-extra latexmk texlive-fonts-recommended
+         texlive-latex-base texlive-latex-extra latexmk texlive-fonts-recommended imagemagick
 
       On Fedora Linux:
 
       .. code-block:: console
 
          sudo dnf install doxygen graphviz texlive-latex latexmk \
-         texlive-collection-fontsrecommended librsvg2-tools
+         texlive-collection-fontsrecommended librsvg2-tools ImageMagick
 
       On Clear Linux:
 
       .. code-block:: console
 
-         sudo swupd bundle-add texlive graphviz
+         sudo swupd bundle-add texlive graphviz ImageMagick
 
       On Arch Linux:
 
       .. code-block:: console
 
          sudo pacman -S graphviz doxygen librsvg texlive-core texlive-bin \
-         texlive-latexextra texlive-fontsextra
+         texlive-latexextra texlive-fontsextra imagemagick
 
    .. group-tab:: macOS
+
+      Install the Python dependencies required to build the documentation:
+
+      .. code-block:: console
+
+         pip install -U -r ~/zephyrproject/zephyr/doc/requirements.txt
 
       Use ``brew`` and ``tlmgr`` to install the tools:
 
       .. code-block:: console
 
-         brew install doxygen graphviz mactex librsvg
+         brew install doxygen graphviz mactex librsvg imagemagick
          tlmgr install latexmk
          tlmgr install collection-fontsrecommended
 
    .. group-tab:: Windows
 
+      Install the Python dependencies required to build the documentation:
+
+      .. code-block:: console
+
+         pip install -U -r %HOMEPATH$\zephyrproject\zephyr\doc\requirements.txt
+
       Open a ``cmd.exe`` window as **Administrator** and run the following command:
 
       .. code-block:: console
 
-         choco install doxygen.install graphviz strawberryperl miktex rsvg-convert
+         choco install doxygen.install graphviz strawberryperl miktex rsvg-convert imagemagick
 
       .. note::
          On Windows, the Sphinx executable ``sphinx-build.exe`` is placed in
@@ -201,7 +220,7 @@ folder, here are the commands to generate the html content locally:
 Depending on your development system, it will take up to 15 minutes to
 collect and generate the HTML content.  When done, you can view the HTML
 output with your browser started at ``doc/_build/html/index.html`` and
-if generated, the PDF file is available at ``doc/_build/pdf/zephyr.pdf``.
+if generated, the PDF file is available at ``doc/_build/latex/zephyr.pdf``.
 
 If you want to build the documentation from scratch just delete the contents
 of the build folder and run ``cmake`` and then ``ninja`` again.
@@ -226,7 +245,7 @@ build the documentation directly from there:
 Filtering expected warnings
 ***************************
 
-There are some known issues with Sphinx/Docleaf that generate Sphinx warnings
+There are some known issues with Sphinx/Breathe that generate Sphinx warnings
 even though the input is valid C code. While these issues are being considered
 for fixing we have created a Sphinx extension that allows to filter them out
 based on a set of regular expressions. The extension is named
@@ -234,8 +253,8 @@ based on a set of regular expressions. The extension is named
 ``doc/_extensions/zephyr/warnings_filter.py``. The warnings to be filtered out
 can be added to the ``doc/known-warnings.txt`` file.
 
-The most common warning reported by Sphinx/Docleaf is related to duplicate C
-declarations. This warning may be caused by different Sphinx/Docleaf issues:
+The most common warning reported by Sphinx/Breathe is related to duplicate C
+declarations. This warning may be caused by different Sphinx/Breathe issues:
 
 - Multiple declarations of the same object are not supported
 - Different objects (e.g. a struct and a function) can not share the same name
@@ -258,6 +277,25 @@ or invoke make with the following target::
 
    # To generate HTML output without detailed Kconfig
    make html-fast
+
+Viewing generated documentation locally
+***************************************
+
+The generated HTML documentation can be hosted locally with python for viewing
+with a web browser:
+
+.. code-block:: console
+
+   $ python3 -m http.server -d _build/html
+
+.. note::
+
+   WSL2 users may need to explicitly bind the address to ``127.0.0.1`` in order
+   to be accessible from the host machine:
+
+   .. code-block:: console
+
+      $ python3 -m http.server -d _build/html --bind 127.0.0.1
 
 Linking external Doxygen projects against Zephyr
 ************************************************

@@ -6,8 +6,8 @@
 
 #include <string.h>
 #include <zephyr/debug/coredump.h>
-#include <xtensa-asm2.h>
-#include <offsets.h>
+#include <xtensa_asm2_context.h>
+#include <zephyr/offsets.h>
 
 #define ARCH_HDR_VER			1
 #define XTENSA_BLOCK_HDR_VER		2
@@ -19,6 +19,7 @@ enum xtensa_soc_code {
 	XTENSA_SOC_INTEL_ADSP,
 	XTENSA_SOC_ESP32S2,
 	XTENSA_SOC_ESP32S3,
+	XTENSA_SOC_DC233C,
 };
 
 struct xtensa_arch_block {
@@ -90,7 +91,7 @@ struct xtensa_arch_block {
  */
 static struct xtensa_arch_block arch_blk;
 
-void arch_coredump_info_dump(const z_arch_esf_t *esf)
+void arch_coredump_info_dump(const struct arch_esf *esf)
 {
 	struct coredump_arch_hdr_t hdr = {
 		.id = COREDUMP_ARCH_HDR_ID,
@@ -109,14 +110,16 @@ void arch_coredump_info_dump(const z_arch_esf_t *esf)
 
 	#if CONFIG_SOC_XTENSA_SAMPLE_CONTROLLER
 		arch_blk.soc = XTENSA_SOC_SAMPLE_CONTROLLER;
-	#elif CONFIG_SOC_ESP32
-		arch_blk.soc = XTENSA_SOC_ESP32;
 	#elif CONFIG_SOC_FAMILY_INTEL_ADSP
 		arch_blk.soc = XTENSA_SOC_INTEL_ADSP;
-	#elif CONFIG_SOC_ESP32S2
+	#elif CONFIG_SOC_SERIES_ESP32
+		arch_blk.soc = XTENSA_SOC_ESP32;
+	#elif CONFIG_SOC_SERIES_ESP32S2
 		arch_blk.soc = XTENSA_SOC_ESP32S2;
-	#elif CONFIG_SOC_ESP32S3
+	#elif CONFIG_SOC_SERIES_ESP32S3
 		arch_blk.soc = XTENSA_SOC_ESP32S3;
+	#elif CONFIG_SOC_XTENSA_DC233C
+		arch_blk.soc = XTENSA_SOC_DC233C;
 	#else
 		arch_blk.soc = XTENSA_SOC_UNKNOWN;
 	#endif

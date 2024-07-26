@@ -112,7 +112,7 @@ static int tca954x_root_init(const struct device *dev)
 
 	/* If the RESET line is available, configure it. */
 	if (config->reset_gpios.port) {
-		if (!device_is_ready(config->reset_gpios.port)) {
+		if (!gpio_is_ready_dt(&config->reset_gpios)) {
 			LOG_ERR("%s is not ready",
 				config->reset_gpios.port->name);
 			return -ENODEV;
@@ -151,7 +151,7 @@ static int tca954x_channel_init(const struct device *dev)
 	return 0;
 }
 
-const struct i2c_driver_api tca954x_api_funcs = {
+static const struct i2c_driver_api tca954x_api_funcs = {
 	.configure = tca954x_configure,
 	.transfer = tca954x_transfer,
 };

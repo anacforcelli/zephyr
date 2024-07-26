@@ -45,6 +45,15 @@ static const struct flash_parameters flash_stm32_parameters = {
 
 static int flash_stm32_write_protection(const struct device *dev, bool enable);
 
+bool __weak flash_stm32_valid_range(const struct device *dev, off_t offset,
+				    uint32_t len, bool write)
+{
+	if (write && !flash_stm32_valid_write(offset, len)) {
+		return false;
+	}
+	return flash_stm32_range_exists(dev, offset, len);
+}
+
 int __weak flash_stm32_check_configuration(void)
 {
 	return 0;
@@ -148,7 +157,7 @@ static void flash_stm32_flush_caches(const struct device *dev,
 		regs->ACR |= FLASH_ACR_DCEN;
 	}
 #elif defined(CONFIG_SOC_SERIES_STM32F7X)
-	SCB_InvalidateDCache_by_Addr((uint32_t *)(CONFIG_FLASH_BASE_ADDRESS
+	SCB_InvalidateDCache_by_Addr((uint32_t *)(FLASH_STM32_BASE_ADDRESS
 						  + offset), len);
 #endif
 }
@@ -169,7 +178,7 @@ static int flash_stm32_read(const struct device *dev, off_t offset,
 
 	LOG_DBG("Read offset: %ld, len: %zu", (long int) offset, len);
 
-	memcpy(data, (uint8_t *) CONFIG_FLASH_BASE_ADDRESS + offset, len);
+	memcpy(data, (uint8_t *) FLASH_STM32_BASE_ADDRESS + offset, len);
 
 	return 0;
 }
@@ -381,7 +390,7 @@ int flash_stm32_option_bytes_lock(const struct device *dev, bool enable)
 	return 0;
 }
 
-#if defined(CONFIG_FLASH_STM32_BLOCK_REGISTERS)
+#if defined(CONFIG_FLASH_EX_OP_ENABLED) && defined(CONFIG_FLASH_STM32_BLOCK_REGISTERS)
 static int flash_stm32_control_register_disable(const struct device *dev)
 {
 	FLASH_TypeDef *regs = FLASH_STM32_REGS(dev);
@@ -553,7 +562,8 @@ static int stm32_flash_init(const struct device *dev)
 
 	flash_stm32_sem_init(dev);
 
-	LOG_DBG("Flash initialized. BS: %zu",
+	LOG_DBG("Flash @0x%x initialized. BS: %zu",
+		FLASH_STM32_BASE_ADDRESS,
 		flash_stm32_parameters.write_block_size);
 
 	/* Check Flash configuration */

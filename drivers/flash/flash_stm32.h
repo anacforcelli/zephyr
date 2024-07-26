@@ -17,6 +17,9 @@
 #include <zephyr/drivers/clock_control/stm32_clock_control.h>
 #endif
 
+/* Get the base address of the flash from the DTS node */
+#define FLASH_STM32_BASE_ADDRESS DT_REG_ADDR(DT_INST(0, st_stm32_nv_flash))
+
 struct flash_stm32_priv {
 	FLASH_TypeDef *regs;
 #if DT_NODE_HAS_PROP(DT_INST(0, st_stm32_flash_controller), clocks) || \
@@ -41,6 +44,17 @@ struct flash_stm32_priv {
 #define FLASH_NSSR_BSY FLASH_SR_BSY
 #define OPTR OPTCR
 #endif /* CONFIG_SOC_SERIES_STM32H5X */
+
+/* Register mapping for the stm32H7RS serie (single bank)*/
+#if defined(CONFIG_SOC_SERIES_STM32H7RSX)
+#define FLASH_NB_32BITWORD_IN_FLASHWORD 4 /* 128 bits */
+#define CR1 CR
+#define SR1 SR
+/* flash sectore Nb [0-7] */
+#define FLASH_CR_SNB FLASH_CR_SSN
+#define FLASH_CR_SNB_Pos FLASH_CR_SSN_Pos
+#define KEYR1 KEYR
+#endif /* CONFIG_SOC_SERIES_STM32H7RSX */
 
 /* Differentiate between arm trust-zone non-secure/secure, and others. */
 #if defined(FLASH_NSSR_NSBSY) || defined(FLASH_NSSR_BSY) /* For mcu w. TZ in non-secure mode */
@@ -256,6 +270,12 @@ static inline bool flash_stm32_range_exists(const struct device *dev,
 		 flash_get_page_info_by_offs(dev, offset + len - 1, &info));
 }
 #endif	/* CONFIG_FLASH_PAGE_LAYOUT */
+
+static inline bool flash_stm32_valid_write(off_t offset, uint32_t len)
+{
+	return ((offset % FLASH_STM32_WRITE_BLOCK_SIZE == 0) &&
+		(len % FLASH_STM32_WRITE_BLOCK_SIZE == 0U));
+}
 
 bool flash_stm32_valid_range(const struct device *dev, off_t offset,
 			     uint32_t len, bool write);

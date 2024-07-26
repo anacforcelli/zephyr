@@ -67,21 +67,21 @@ static const struct bst_test_instance test_def[] = {
 	{
 		.test_id = "central",
 		.test_descr = "Central device",
-		.test_post_init_f = test_ccc_update_init,
+		.test_pre_init_f = test_ccc_update_init,
 		.test_tick_f = test_tick,
 		.test_main_f = central_main,
 	},
 	{
 		.test_id = "bad_central",
 		.test_descr = "Bad Central device",
-		.test_post_init_f = test_ccc_update_init,
+		.test_pre_init_f = test_ccc_update_init,
 		.test_tick_f = test_tick,
 		.test_main_f = bad_central_main,
 	},
 	{
 		.test_id = "peripheral",
 		.test_descr = "Peripheral device",
-		.test_post_init_f = test_ccc_update_init,
+		.test_pre_init_f = test_ccc_update_init,
 		.test_tick_f = test_tick,
 		.test_main_f = peripheral_main,
 	},
@@ -94,7 +94,8 @@ struct bst_test_list *test_ccc_update_install(struct bst_test_list *tests)
 
 bst_test_install_t test_installers[] = {test_ccc_update_install, NULL};
 
-void main(void)
+int main(void)
 {
 	bst_main();
+	return 0;
 }

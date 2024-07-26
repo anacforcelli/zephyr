@@ -68,7 +68,7 @@ static void get_faults(uint8_t *faults, uint8_t faults_size, uint8_t *dst, uint8
 	}
 }
 
-static int fault_get_cur(struct bt_mesh_model *model, uint8_t *test_id,
+static int fault_get_cur(const struct bt_mesh_model *model, uint8_t *test_id,
 			 uint16_t *company_id, uint8_t *faults, uint8_t *fault_count)
 {
 	shell_print_ctx("Sending current faults");
@@ -81,7 +81,7 @@ static int fault_get_cur(struct bt_mesh_model *model, uint8_t *test_id,
 	return 0;
 }
 
-static int fault_get_reg(struct bt_mesh_model *model, uint16_t cid,
+static int fault_get_reg(const struct bt_mesh_model *model, uint16_t cid,
 			 uint8_t *test_id, uint8_t *faults, uint8_t *fault_count)
 {
 	if (cid != CONFIG_BT_COMPANY_ID) {
@@ -99,7 +99,7 @@ static int fault_get_reg(struct bt_mesh_model *model, uint16_t cid,
 	return 0;
 }
 
-static int fault_clear(struct bt_mesh_model *model, uint16_t cid)
+static int fault_clear(const struct bt_mesh_model *model, uint16_t cid)
 {
 	if (cid != CONFIG_BT_COMPANY_ID) {
 		return -EINVAL;
@@ -110,7 +110,7 @@ static int fault_clear(struct bt_mesh_model *model, uint16_t cid)
 	return 0;
 }
 
-static int fault_test(struct bt_mesh_model *model, uint8_t test_id,
+static int fault_test(const struct bt_mesh_model *model, uint8_t test_id,
 		      uint16_t cid)
 {
 	if (cid != CONFIG_BT_COMPANY_ID) {
@@ -124,12 +124,12 @@ static int fault_test(struct bt_mesh_model *model, uint8_t test_id,
 	return 0;
 }
 
-static void attention_on(struct bt_mesh_model *model)
+static void attention_on(const struct bt_mesh_model *model)
 {
 	shell_print_ctx("Attention On");
 }
 
-static void attention_off(struct bt_mesh_model *model)
+static void attention_off(const struct bt_mesh_model *model)
 {
 	shell_print_ctx("Attention Off");
 }
@@ -144,13 +144,13 @@ static const struct bt_mesh_health_srv_cb health_srv_cb = {
 };
 #endif /* CONFIG_BT_MESH_SHELL_HEALTH_SRV_INSTANCE */
 
-#ifdef CONFIG_BT_MESH_LARGE_COMP_DATA_SRV
-static uint8_t health_tests[] = {
+#if defined(CONFIG_BT_MESH_LARGE_COMP_DATA_SRV)
+static const uint8_t health_tests[] = {
 	BT_MESH_HEALTH_TEST_INFO(COMPANY_ID_LF, 6, 0x01, 0x02, 0x03, 0x04, 0x34, 0x15),
 	BT_MESH_HEALTH_TEST_INFO(COMPANY_ID_NORDIC_SEMI, 3, 0x01, 0x02, 0x03),
 };
 
-static struct bt_mesh_models_metadata_entry health_srv_meta[] = {
+const struct bt_mesh_models_metadata_entry health_srv_meta[] = {
 	BT_MESH_HEALTH_TEST_INFO_METADATA(health_tests),
 	BT_MESH_MODELS_METADATA_END,
 };
@@ -159,9 +159,6 @@ static struct bt_mesh_models_metadata_entry health_srv_meta[] = {
 struct bt_mesh_health_srv bt_mesh_shell_health_srv = {
 #if defined(CONFIG_BT_MESH_SHELL_HEALTH_SRV_INSTANCE)
 	.cb = &health_srv_cb,
-#endif
-#ifdef CONFIG_BT_MESH_LARGE_COMP_DATA_SRV
-	.metadata = health_srv_meta,
 #endif
 };
 
@@ -387,6 +384,7 @@ static int cmd_proxy_disconnect(const struct shell *sh, size_t argc,
 
 	return 0;
 }
+#endif /* CONFIG_BT_MESH_PROXY_CLIENT */
 
 #if defined(CONFIG_BT_MESH_PROXY_SOLICITATION)
 static int cmd_proxy_solicit(const struct shell *sh, size_t argc,
@@ -410,7 +408,6 @@ static int cmd_proxy_solicit(const struct shell *sh, size_t argc,
 	return err;
 }
 #endif /* CONFIG_BT_MESH_PROXY_SOLICITATION */
-#endif /* CONFIG_BT_MESH_PROXY_CLIENT */
 #endif /* CONFIG_BT_MESH_SHELL_GATT_PROXY */
 
 #if defined(CONFIG_BT_MESH_SHELL_PROV)
@@ -492,32 +489,41 @@ static void prov_node_added(uint16_t net_idx, uint8_t uuid[16], uint16_t addr,
 }
 
 #if defined(CONFIG_BT_MESH_PROVISIONER)
-static enum {
-	AUTH_NO_OOB,
-	AUTH_STATIC_OOB,
-	AUTH_OUTPUT_OOB,
-	AUTH_INPUT_OOB
-} auth_type;
+static const char * const output_meth_string[] = {
+	"Blink",
+	"Beep",
+	"Vibrate",
+	"Display Number",
+	"Display String",
+};
+
+static const char *const input_meth_string[] = {
+	"Push",
+	"Twist",
+	"Enter Number",
+	"Enter String",
+};
 
 static void capabilities(const struct bt_mesh_dev_capabilities *cap)
 {
-	if (cap->oob_type && auth_type == AUTH_STATIC_OOB) {
-		bt_mesh_auth_method_set_static(bt_mesh_shell_prov.static_val,
-					       bt_mesh_shell_prov.static_val_len);
-		return;
+	shell_print_ctx("Provisionee capabilities:");
+	shell_print_ctx("\tStatic OOB is %ssupported", cap->oob_type & 1 ? "" : "not ");
+
+	shell_print_ctx("\tAvailable output actions (%d bytes max):%s", cap->output_size,
+			cap->output_actions ? "" : "\n\t\tNone");
+	for (int i = 0; i < ARRAY_SIZE(output_meth_string); i++) {
+		if (cap->output_actions & BIT(i)) {
+			shell_print_ctx("\t\t%s", output_meth_string[i]);
+		}
 	}
 
-	if (cap->output_actions && auth_type == AUTH_OUTPUT_OOB) {
-		bt_mesh_auth_method_set_output(BT_MESH_DISPLAY_NUMBER, 6);
-		return;
+	shell_print_ctx("\tAvailable input actions (%d bytes max):%s", cap->input_size,
+			cap->input_actions ? "" : "\n\t\tNone");
+	for (int i = 0; i < ARRAY_SIZE(input_meth_string); i++) {
+		if (cap->input_actions & BIT(i)) {
+			shell_print_ctx("\t\t%s", input_meth_string[i]);
+		}
 	}
-
-	if (cap->input_actions && auth_type == AUTH_INPUT_OOB) {
-		bt_mesh_auth_method_set_input(BT_MESH_ENTER_NUMBER, 6);
-		return;
-	}
-
-	bt_mesh_auth_method_set_none();
 }
 #endif
 
@@ -602,7 +608,7 @@ static void link_close(bt_mesh_prov_bearer_t bearer)
 	shell_print_ctx("Provisioning link closed on %s", bearer2str(bearer));
 }
 
-static uint8_t static_val[16];
+static uint8_t static_val[32];
 
 struct bt_mesh_prov bt_mesh_shell_prov = {
 	.uuid = dev_uuid,
@@ -636,7 +642,7 @@ static int cmd_static_oob(const struct shell *sh, size_t argc, char *argv[])
 		bt_mesh_shell_prov.static_val_len = 0U;
 	} else {
 		bt_mesh_shell_prov.static_val_len = hex2bin(argv[1], strlen(argv[1]),
-					      static_val, 16);
+					      static_val, 32);
 		if (bt_mesh_shell_prov.static_val_len) {
 			bt_mesh_shell_prov.static_val = static_val;
 		} else {
@@ -717,6 +723,11 @@ static int cmd_beacon_listen(const struct shell *sh, size_t argc,
 		return err;
 	}
 
+	if (!bt_mesh_is_provisioned()) {
+		shell_error(sh, "Not yet provisioned");
+		return -EINVAL;
+	}
+
 	if (val) {
 		bt_mesh_shell_prov.unprovisioned_beacon = print_unprovisioned_beacon;
 #if defined(CONFIG_BT_MESH_PB_GATT_CLIENT)
@@ -762,7 +773,7 @@ static int cmd_provision_gatt(const struct shell *sh, size_t argc,
 }
 #endif /* CONFIG_BT_MESH_PB_GATT_CLIENT */
 
-#if defined(CONFIG_BT_MESH_PROV_DEVICE)
+#if defined(CONFIG_BT_MESH_PROVISIONEE)
 static int cmd_pb(bt_mesh_prov_bearer_t bearer, const struct shell *sh,
 		  size_t argc, char *argv[])
 {
@@ -813,7 +824,7 @@ static int cmd_pb_gatt(const struct shell *sh, size_t argc, char *argv[])
 	return cmd_pb(BT_MESH_PROV_GATT, sh, argc, argv);
 }
 #endif /* CONFIG_BT_MESH_PB_GATT */
-#endif /* CONFIG_BT_MESH_PROV_DEVICE */
+#endif /* CONFIG_BT_MESH_PROVISIONEE */
 
 #if defined(CONFIG_BT_MESH_PROVISIONER)
 static int cmd_remote_pub_key_set(const struct shell *sh, size_t argc, char *argv[])
@@ -877,16 +888,16 @@ static int cmd_auth_method_set_output(const struct shell *sh, size_t argc, char 
 static int cmd_auth_method_set_static(const struct shell *sh, size_t argc, char *argv[])
 {
 	size_t len;
-	uint8_t static_val[16];
+	uint8_t static_oob_auth[32];
 	int err = 0;
 
-	len = hex2bin(argv[1], strlen(argv[1]), static_val, sizeof(static_val));
+	len = hex2bin(argv[1], strlen(argv[1]), static_oob_auth, sizeof(static_oob_auth));
 	if (len < 1) {
 		shell_warn(sh, "Unable to parse input string argument");
 		return -EINVAL;
 	}
 
-	err = bt_mesh_auth_method_set_static(static_val, len);
+	err = bt_mesh_auth_method_set_static(static_oob_auth, len);
 	if (err) {
 		shell_error(sh, "Setting static OOB authentication failed (err %d)", err);
 	}
@@ -935,7 +946,7 @@ static int cmd_provision_adv(const struct shell *sh, size_t argc,
 
 static int cmd_provision_local(const struct shell *sh, size_t argc, char *argv[])
 {
-	uint8_t *net_key = (uint8_t *)bt_mesh_shell_default_key;
+	uint8_t net_key[16];
 	uint16_t net_idx, addr;
 	uint32_t iv_index;
 	int err = 0;
@@ -953,6 +964,8 @@ static int cmd_provision_local(const struct shell *sh, size_t argc, char *argv[]
 		shell_warn(sh, "Unable to parse input string argument");
 		return err;
 	}
+
+	memcpy(net_key, bt_mesh_shell_default_key, sizeof(net_key));
 
 	if (IS_ENABLED(CONFIG_BT_MESH_CDB)) {
 		struct bt_mesh_cdb_subnet *sub;
@@ -1059,7 +1072,7 @@ static int cmd_rpl_clear(const struct shell *sh, size_t argc, char *argv[])
 }
 
 #if defined(CONFIG_BT_MESH_SHELL_HEALTH_SRV_INSTANCE)
-static struct bt_mesh_elem *primary_element(void)
+static const struct bt_mesh_elem *primary_element(void)
 {
 	const struct bt_mesh_comp *comp = bt_mesh_comp_get();
 
@@ -1074,7 +1087,7 @@ static int cmd_add_fault(const struct shell *sh, size_t argc, char *argv[])
 {
 	uint8_t fault_id;
 	uint8_t i;
-	struct bt_mesh_elem *elem;
+	const struct bt_mesh_elem *elem;
 	int err = 0;
 
 	elem = primary_element();
@@ -1127,7 +1140,7 @@ static int cmd_del_fault(const struct shell *sh, size_t argc, char *argv[])
 {
 	uint8_t fault_id;
 	uint8_t i;
-	struct bt_mesh_elem *elem;
+	const struct bt_mesh_elem *elem;
 	int err = 0;
 
 	elem = primary_element();
@@ -1653,7 +1666,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(auth_cmds,
 		      cmd_auth_method_set_output, 3, 0),
 	SHELL_CMD_ARG(static, NULL, "<Val(1-16 hex)>", cmd_auth_method_set_static, 2,
 		      0),
-	SHELL_CMD_ARG(none, NULL, NULL, cmd_auth_method_set_none, 2, 0),
+	SHELL_CMD_ARG(none, NULL, NULL, cmd_auth_method_set_none, 1, 0),
 	SHELL_SUBCMD_SET_END);
 #endif
 
@@ -1670,14 +1683,14 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(comp-change, NULL, NULL, cmd_comp_change, 1, 0),
 
 /* Provisioning operations */
-#if defined(CONFIG_BT_MESH_PROV_DEVICE)
+#if defined(CONFIG_BT_MESH_PROVISIONEE)
 #if defined(CONFIG_BT_MESH_PB_GATT)
 	SHELL_CMD_ARG(pb-gatt, NULL, "<Val(off, on)>", cmd_pb_gatt, 2, 0),
 #endif
 #if defined(CONFIG_BT_MESH_PB_ADV)
 	SHELL_CMD_ARG(pb-adv, NULL, "<Val(off, on)>", cmd_pb_adv, 2, 0),
 #endif
-#endif /* CONFIG_BT_MESH_PROV_DEVICE */
+#endif /* CONFIG_BT_MESH_PROVISIONEE */
 
 #if defined(CONFIG_BT_MESH_PROVISIONER)
 	SHELL_CMD(auth-method, &auth_cmds, "Authentication methods", bt_mesh_shell_mdl_cmds_help),
@@ -1730,11 +1743,11 @@ SHELL_STATIC_SUBCMD_SET_CREATE(proxy_cmds,
 #if defined(CONFIG_BT_MESH_PROXY_CLIENT)
 	SHELL_CMD_ARG(connect, NULL, "<NetKeyIdx>", cmd_proxy_connect, 2, 0),
 	SHELL_CMD_ARG(disconnect, NULL, "<NetKeyIdx>", cmd_proxy_disconnect, 2, 0),
+#endif
 
 #if defined(CONFIG_BT_MESH_PROXY_SOLICITATION)
 	SHELL_CMD_ARG(solicit, NULL, "<NetKeyIdx>",
 		      cmd_proxy_solicit, 2, 0),
-#endif
 #endif
 	SHELL_SUBCMD_SET_END);
 #endif /* CONFIG_BT_MESH_SHELL_GATT_PROXY */
@@ -1803,5 +1816,5 @@ SHELL_STATIC_SUBCMD_SET_CREATE(mesh_cmds,
 	SHELL_SUBCMD_SET_END
 );
 
-SHELL_CMD_ARG_REGISTER(mesh, &mesh_cmds, "Bluetooth mesh shell commands",
+SHELL_CMD_ARG_REGISTER(mesh, &mesh_cmds, "Bluetooth Mesh shell commands",
 			bt_mesh_shell_mdl_cmds_help, 1, 1);

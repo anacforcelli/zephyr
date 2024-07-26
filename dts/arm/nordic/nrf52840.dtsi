@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include <arm/armv7-m.dtsi>
-#include "nrf_common.dtsi"
+#include <nordic/nrf_common.dtsi>
 
 / {
 	chosen {
+		zephyr,bt-hci = &bt_hci_controller;
 		zephyr,entropy = &rng;
 		zephyr,flash-controller = &flash_controller;
 	};
@@ -32,6 +33,7 @@
 		ficr: ficr@10000000 {
 			compatible = "nordic,nrf-ficr";
 			reg = <0x10000000 0x1000>;
+			#nordic,ficr-cells = <1>;
 			status = "okay";
 		};
 
@@ -91,6 +93,14 @@
 				compatible = "nordic,nrf-ieee802154";
 				status = "disabled";
 			};
+
+			/* Note: In the nRF Connect SDK the SoftDevice Controller
+			 * is added and set as the default Bluetooth Controller.
+			 */
+			bt_hci_controller: bt_hci_controller {
+				compatible = "zephyr,bt-hci-ll-sw-split";
+				status = "okay";
+			};
 		};
 
 		uart0: uart@40002000 {
@@ -116,6 +126,7 @@
 			reg = <0x40003000 0x1000>;
 			clock-frequency = <I2C_BITRATE_STANDARD>;
 			interrupts = <3 NRF_DEFAULT_IRQ_PRIORITY>;
+			easydma-maxcnt-bits = <16>;
 			status = "disabled";
 		};
 
@@ -151,6 +162,7 @@
 			reg = <0x40004000 0x1000>;
 			clock-frequency = <I2C_BITRATE_STANDARD>;
 			interrupts = <4 NRF_DEFAULT_IRQ_PRIORITY>;
+			easydma-maxcnt-bits = <16>;
 			status = "disabled";
 		};
 
@@ -176,14 +188,15 @@
 			compatible = "nordic,nrf-nfct";
 			reg = <0x40005000 0x1000>;
 			interrupts = <5 NRF_DEFAULT_IRQ_PRIORITY>;
-			status = "okay";
+			status = "disabled";
 		};
 
-		gpiote: gpiote@40006000 {
+		gpiote: gpiote0: gpiote@40006000 {
 			compatible = "nordic,nrf-gpiote";
 			reg = <0x40006000 0x1000>;
 			interrupts = <6 5>;
 			status = "disabled";
+			instance = <0>;
 		};
 
 		adc: adc@40007000 {
@@ -523,6 +536,7 @@
 			#gpio-cells = <2>;
 			status = "disabled";
 			port = <0>;
+			gpiote-instance = <&gpiote>;
 		};
 
 		gpio1: gpio@50000300 {
@@ -534,31 +548,24 @@
 			ngpios = <16>;
 			status = "disabled";
 			port = <1>;
+			gpiote-instance = <&gpiote>;
 		};
 
 		cryptocell: crypto@5002a000 {
-			compatible = "nordic,nrf-cc310";
-			reg = <0x5002A000 0x1000>;
-			status = "okay";
-			#address-cells = <1>;
-			#size-cells = <1>;
-			cryptocell310: crypto@5002b000 {
-				compatible = "arm,cryptocell-310";
-				reg = <0x5002B000 0x1000>;
-				interrupts = <42 NRF_DEFAULT_IRQ_PRIORITY>;
-			};
+			compatible = "nordic,cryptocell", "arm,cryptocell-310";
+			reg = <0x5002a000 0x1000>, <0x5002b000 0x1000>;
+			reg-names = "wrapper", "core";
+			interrupts = <42 NRF_DEFAULT_IRQ_PRIORITY>;
+			status = "disabled";
 		};
-	};
-
-	sw_pwm: sw-pwm {
-		compatible = "nordic,nrf-sw-pwm";
-		status = "disabled";
-		generator = <&timer2>;
-		clock-prescaler = <0>;
-		#pwm-cells = <3>;
 	};
 };
 
 &nvic {
 	arm,num-irq-priority-bits = <3>;
+};
+
+&systick {
+	/* Use RTC for system clock, instead of SysTick. */
+	status = "disabled";
 };

@@ -19,6 +19,8 @@ extern "C" {
 /**
  * @brief Non-volatile Storage (NVS)
  * @defgroup nvs Non-volatile Storage (NVS)
+ * @since 1.12
+ * @version 1.0.0
  * @ingroup file_system_storage
  * @{
  * @}
@@ -93,6 +95,11 @@ int nvs_clear(struct nvs_fs *fs);
 
 /**
  * @brief Write an entry to the file system.
+ *
+ * @note  When @p len parameter is equal to @p 0 then entry is effectively removed (it is
+ * equivalent to calling of nvs_delete). Any calls to nvs_read for entries with data of length
+ * @p 0 will return error.@n It is not possible to distinguish between deleted entry and entry
+ * with data of length 0.
  *
  * @param fs Pointer to file system
  * @param id Id of the entry to be written

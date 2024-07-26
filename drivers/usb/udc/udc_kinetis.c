@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER(usbfsotg, CONFIG_UDC_DRIVER_LOG_LEVEL);
 #define USBFSOTG_REV		0x33
 
 /*
- * There is no real advantage to change control enpoint size
+ * There is no real advantage to change control endpoint size
  * but we can use it for testing UDC driver API and higher layers.
  */
 #define USBFSOTG_MPS0		UDC_MPS0_64
@@ -448,6 +448,8 @@ static void usbfsotg_event_submit(const struct device *dev,
 	ret = k_mem_slab_alloc(&usbfsotg_ee_slab, (void **)&ev, K_NO_WAIT);
 	if (ret) {
 		udc_submit_event(dev, UDC_EVT_ERROR, ret);
+		LOG_ERR("Failed to allocate slab");
+		return;
 	}
 
 	ev->dev = dev;
@@ -498,7 +500,7 @@ static void xfer_work_handler(struct k_work *item)
 			udc_submit_event(ev->dev, UDC_EVT_ERROR, err);
 		}
 
-		/* Peek next transer */
+		/* Peek next transfer */
 		if (ev->ep != USB_CONTROL_EP_OUT && !udc_ep_is_busy(ev->dev, ev->ep)) {
 			if (usbfsotg_xfer_next(ev->dev, ep_cfg) == 0) {
 				udc_ep_set_busy(ev->dev, ev->ep, true);
@@ -506,7 +508,7 @@ static void xfer_work_handler(struct k_work *item)
 		}
 
 xfer_work_error:
-		k_mem_slab_free(&usbfsotg_ee_slab, (void **)&ev);
+		k_mem_slab_free(&usbfsotg_ee_slab, (void *)ev);
 	}
 }
 
@@ -821,7 +823,8 @@ static int usbfsotg_ep_clear_halt(const struct device *dev,
 	if (USB_EP_GET_IDX(cfg->addr) == 0U) {
 		usbfsotg_resume_tx(dev);
 	} else {
-		/* TODO: trigger queued transfers? */
+		/* trigger queued transfers */
+		usbfsotg_event_submit(dev, cfg->addr, USBFSOTG_EVT_XFER);
 	}
 
 	return 0;

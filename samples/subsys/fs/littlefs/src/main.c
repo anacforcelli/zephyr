@@ -252,7 +252,7 @@ static int littlefs_flash_erase(unsigned int id)
 
 	/* Optional wipe flash contents */
 	if (IS_ENABLED(CONFIG_APP_WIPE_STORAGE)) {
-		rc = flash_area_erase(pfa, 0, pfa->fa_size);
+		rc = flash_area_flatten(pfa, 0, pfa->fa_size);
 		LOG_ERR("Erasing flash area ... %d", rc);
 	}
 
@@ -273,7 +273,7 @@ static struct fs_mount_t lfs_storage_mnt = {
 };
 #endif /* PARTITION_NODE */
 
-	struct fs_mount_t *mp =
+	struct fs_mount_t *mountpoint =
 #if DT_NODE_EXISTS(PARTITION_NODE)
 		&FS_FSTAB_ENTRY(PARTITION_NODE)
 #else
@@ -312,7 +312,7 @@ static int littlefs_mount(struct fs_mount_t *mp)
 
 #if defined(CONFIG_DISK_DRIVER_SDMMC)
 #define DISK_NAME CONFIG_SDMMC_VOLUME_NAME
-#elif IS_ENABLED(CONFIG_DISK_DRIVER_MMC)
+#elif defined(CONFIG_DISK_DRIVER_MMC)
 #define DISK_NAME CONFIG_MMC_VOLUME_NAME
 #else
 #error "No disk device defined, is your board supported?"
@@ -324,7 +324,7 @@ static struct fs_mount_t __mp = {
 	.fs_data = &lfsfs,
 	.flags = FS_MOUNT_FLAG_USE_DISK_ACCESS,
 };
-struct fs_mount_t *mp = &__mp;
+struct fs_mount_t *mountpoint = &__mp;
 
 static int littlefs_mount(struct fs_mount_t *mp)
 {
@@ -347,15 +347,15 @@ int main(void)
 
 	LOG_PRINTK("Sample program to r/w files on littlefs\n");
 
-	rc = littlefs_mount(mp);
+	rc = littlefs_mount(mountpoint);
 	if (rc < 0) {
 		return 0;
 	}
 
-	snprintf(fname1, sizeof(fname1), "%s/boot_count", mp->mnt_point);
-	snprintf(fname2, sizeof(fname2), "%s/pattern.bin", mp->mnt_point);
+	snprintf(fname1, sizeof(fname1), "%s/boot_count", mountpoint->mnt_point);
+	snprintf(fname2, sizeof(fname2), "%s/pattern.bin", mountpoint->mnt_point);
 
-	rc = fs_statvfs(mp->mnt_point, &sbuf);
+	rc = fs_statvfs(mountpoint->mnt_point, &sbuf);
 	if (rc < 0) {
 		LOG_PRINTK("FAIL: statvfs: %d\n", rc);
 		goto out;
@@ -363,13 +363,13 @@ int main(void)
 
 	LOG_PRINTK("%s: bsize = %lu ; frsize = %lu ;"
 		   " blocks = %lu ; bfree = %lu\n",
-		   mp->mnt_point,
+		   mountpoint->mnt_point,
 		   sbuf.f_bsize, sbuf.f_frsize,
 		   sbuf.f_blocks, sbuf.f_bfree);
 
-	rc = lsdir(mp->mnt_point);
+	rc = lsdir(mountpoint->mnt_point);
 	if (rc < 0) {
-		LOG_PRINTK("FAIL: lsdir %s: %d\n", mp->mnt_point, rc);
+		LOG_PRINTK("FAIL: lsdir %s: %d\n", mountpoint->mnt_point, rc);
 		goto out;
 	}
 
@@ -384,7 +384,7 @@ int main(void)
 	}
 
 out:
-	rc = fs_unmount(mp);
-	LOG_PRINTK("%s unmount: %d\n", mp->mnt_point, rc);
+	rc = fs_unmount(mountpoint);
+	LOG_PRINTK("%s unmount: %d\n", mountpoint->mnt_point, rc);
 	return 0;
 }

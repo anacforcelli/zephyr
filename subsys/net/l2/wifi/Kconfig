@@ -40,12 +40,37 @@ config WIFI_MGMT_TWT_CHECK_IP
 	  interface has a valid IP address might be desirable in most scenarios.
 
 config WIFI_MGMT_FORCED_PASSIVE_SCAN
-	bool "Force Passive scan"
+	bool "Force passive Wi-Fi scanning"
 	help
-	  Force passive scan (typically used to reduce power consumption),
-	  the scan type is always sent as passive.
-	  This doesn't guarantee that passive scan will be used, it depends
-	  on the underlying chip implementation to support and honour scan type.
+	  Always request a passive scan, regardless of the user supplied parameters.
+	  This is typically used when the underlying hardware is not certified for
+	  RF transmissions. This doesn't guarantee that passive scan will be used,
+	  it depends on the underlying chip implementation to support and honour
+	  scan type.
+
+config WIFI_MGMT_SCAN_SSID_FILT_MAX
+	int "Maximum number of SSIDs that can be specified for SSID filtering"
+	default 1
+	range 1 4
+	help
+	  Maximum number of SSIDs that can be specified for SSID filtering.
+	  This can be set based on the underlying chipsets limitations.
+
+config WIFI_MGMT_SCAN_CHAN_MAX_MANUAL
+	int "Maximum number of channels that can be manually specified"
+	range 1 110
+	default 3
+	help
+	  There are approximately 100 channels allocated across the three supported bands.
+	  The default of 3 allows the 3 most common channels (2.4GHz: 1, 6, 11) to be specified.
+
+config WIFI_SHELL_MAX_AP_STA
+	int "Maximum number of APs and STAs that can be managed in Wi-Fi shell"
+	range 1 5
+	default 1
+	help
+	  This option defines the maximum number of APs and STAs that can be managed
+	  in Wi-Fi shell.
 
 config WIFI_NM
 	bool "Wi-Fi Network manager support"
@@ -68,3 +93,29 @@ module-str = Log level for Wi-Fi Network manager module
 module-help = Enables using the Wi-Fi Network managers to manage the Wi-Fi network interfaces.
 source "subsys/net/Kconfig.template.log_config.net"
 endif # WIFI_NM
+
+config WIFI_MGMT_AP_STA_INACTIVITY_TIMEOUT
+	int "Station inactivity timeout in seconds"
+	default 300
+	help
+	  Station inactivity timeout is the period for which AP may keep a client
+	  in associated state while there is no traffic from that particular
+	  client. If a non-zero value is set, AP may choose to disassociate the
+	  client after the timeout.
+
+config WIFI_MGMT_AP_STA_SKIP_INACTIVITY_POLL
+	bool "Skip inactivity poll for stations after the inactivity timeout"
+	help
+	  Skip inactivity poll for stations after the inactivity timeout. This
+	  will prevent the AP from sending null data frames to the stations after
+	  the inactivity timeout. This is useful to disconnect idle stations even
+	  if they are within the range of the AP.
+	  Note: This is only build time parameter, runtime configuration not supported.
+
+config WIFI_MGMT_AP_MAX_NUM_STA
+	int "Maximum number of stations allowed in station table"
+	range 1 2007
+	default 4
+	help
+	  Maximum number of stations allowed in station table. New stations will be
+	  rejected after the station table is full.

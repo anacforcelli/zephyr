@@ -105,23 +105,11 @@ static int icache_wait_for_invalidate_complete(void)
 	return status;
 }
 
-/*
- * offset and len must be aligned on 16 for write,
- * positive and not beyond end of flash
- */
-bool flash_stm32_valid_range(const struct device *dev, off_t offset,
-			     uint32_t len,
-			     bool write)
-{
-	return (!write || (offset % 16 == 0 && len % 16 == 0U)) &&
-		flash_stm32_range_exists(dev, offset, len);
-}
-
 static int write_qword(const struct device *dev, off_t offset, const uint32_t *buff)
 {
 	FLASH_TypeDef *regs = FLASH_STM32_REGS(dev);
 	volatile uint32_t *flash = (uint32_t *)(offset
-						+ CONFIG_FLASH_BASE_ADDRESS);
+						+ FLASH_STM32_BASE_ADDRESS);
 	uint32_t tmp;
 	int rc;
 
@@ -274,10 +262,16 @@ int flash_stm32_write_range(const struct device *dev, unsigned int offset,
 	}
 
 	if (icache_enabled) {
+		int rc2;
+
 		/* Since i-cache was disabled, this would start the
 		 * invalidation procedure, so wait for completion.
 		 */
-		rc = icache_wait_for_invalidate_complete();
+		rc2 = icache_wait_for_invalidate_complete();
+
+		if (!rc) {
+			rc = rc2;
+		}
 
 		/* I-cache should be enabled only after the
 		 * invalidation is complete.

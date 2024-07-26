@@ -276,7 +276,7 @@ The merging of pull requests in the main branch of a module
 repository must be coupled with the corresponding manifest
 file update in the zephyr main tree.
 
-**Issue Reporting:** GitHub issues are intentionally disabled in module
+**Issue Reporting:** `GitHub issues`_ are intentionally disabled in module
 repositories, in
 favor of a centralized policy for issue reporting. Tickets concerning, for
 example, bugs or enhancements in modules shall be opened in the main
@@ -569,6 +569,45 @@ Build files located in a ``MODULE_EXT_ROOT`` can be described as:
 This allows control of the build inclusion to be described externally to the
 Zephyr module.
 
+.. _modules-vulnerability-monitoring:
+
+Vulnerability monitoring
+========================
+
+The module description file :file:`zephyr/module.yml` can be used to improve vulnerability monitoring.
+
+If your module needs to track vulnerabilities using an external reference
+(e.g your module is forked from another repository), you can use the ``security`` section.
+It contains the field ``external-references`` that contains a list of references that needs to
+be monitored for your module. The supported formats are:
+
+- CPE (Common Platform Enumeration)
+- PURL (Package URL)
+
+.. code-block:: yaml
+
+   security:
+     external-references:
+       - <module-related-cpe>
+       - <an-other-module-related-cpe>
+       - <module-related-purl>
+
+A real life example for `mbedTLS` module could look like this:
+
+.. code-block:: yaml
+
+   security:
+     external-references:
+       - cpe:2.3:a:arm:mbed_tls:3.5.2:*:*:*:*:*:*:*
+       - pkg:github/Mbed-TLS/mbedtls@V3.5.2
+
+.. note::
+   CPE field must follow the CPE 2.3 schema provided by `NVD
+   <https://csrc.nist.gov/projects/security-content-automation-protocol/specifications/cpe>`_.
+   PURL field must follow the PURL specification provided by `Github
+   <https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst>`_.
+
+
 Build system integration
 ========================
 
@@ -611,9 +650,10 @@ For example, to include the file :file:`some/Kconfig` in module ``foo``:
 
   source "$(ZEPHYR_FOO_MODULE_DIR)/some/Kconfig"
 
-During CMake processing of each Zephyr module, the following two variables are
+During CMake processing of each Zephyr module, the following variables are
 also available:
 
+- the current module's name: ``${ZEPHYR_CURRENT_MODULE_NAME}``
 - the current module's top level directory: ``${ZEPHYR_CURRENT_MODULE_DIR}``
 - the current module's :file:`CMakeLists.txt` directory: ``${ZEPHYR_CURRENT_CMAKE_DIR}``
 
@@ -625,7 +665,7 @@ variables. For example:
 
   include(${ZEPHYR_CURRENT_MODULE_DIR}/cmake/code.cmake)
 
-It is possible to append values to a Zephyr CMake list variable from the module's first
+It is possible to append values to a Zephyr `CMake list`_ variable from the module's first
 CMakeLists.txt file.
 To do so, append the value to the list and then set the list in the PARENT_SCOPE
 of the CMakeLists.txt file. For example, to append ``bar`` to the ``FOO_LIST`` variable in the
@@ -671,7 +711,7 @@ example:
 
   include(${SYSBUILD_CURRENT_MODULE_DIR}/cmake/code.cmake)
 
-It is possible to append values to a Zephyr CMake list variable from the
+It is possible to append values to a Zephyr `CMake list`_ variable from the
 module's first CMakeLists.txt file.
 To do so, append the value to the list and then set the list in the
 PARENT_SCOPE of the CMakeLists.txt file. For example, to append ``bar`` to the
@@ -745,7 +785,7 @@ module ``bar`` to be present in the build system:
    name: foo
    build:
      depends:
-     - bar
+       - bar
 
 This example will ensure that ``bar`` is present when ``foo`` is included into
 the build system, and it will also ensure that ``bar`` is processed before
@@ -794,7 +834,7 @@ Create a ``MODULE_EXT_ROOT`` with the following structure
            └── Kconfig
 
 and then build your application by specifying ``-DMODULE_EXT_ROOT`` parameter to
-the CMake build system. The ``MODULE_EXT_ROOT`` accepts a CMake list of roots as
+the CMake build system. The ``MODULE_EXT_ROOT`` accepts a `CMake list`_ of roots as
 argument.
 
 A Zephyr module can automatically be added to the ``MODULE_EXT_ROOT``
@@ -818,7 +858,7 @@ to the path containing the CMake file.
 To include a module's Kconfig file, set the variable ``ZEPHYR_<MODULE_NAME>_KCONFIG``
 to the path to the Kconfig file.
 
-The following is an example on how to add support the the ``FOO`` module.
+The following is an example on how to add support the ``FOO`` module.
 
 Create the following structure
 
@@ -1151,5 +1191,4 @@ revision needs to be changed to the commit hash from the module repository.
 
 .. _CMake list: https://cmake.org/cmake/help/latest/manual/cmake-language.7.html#lists
 .. _add_subdirectory(): https://cmake.org/cmake/help/latest/command/add_subdirectory.html
-
 .. _GitHub issues: https://github.com/zephyrproject-rtos/zephyr/issues

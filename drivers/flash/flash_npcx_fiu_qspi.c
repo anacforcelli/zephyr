@@ -96,10 +96,42 @@ static inline void qspi_npcx_config_uma_mode(const struct device *dev,
 	}
 }
 
+static inline void qspi_npcx_config_dra_4byte_mode(const struct device *dev,
+						   const struct npcx_qspi_cfg *qspi_cfg)
+{
+#if defined(CONFIG_FLASH_NPCX_FIU_SUPP_DRA_4B_ADDR)
+	struct fiu_reg *const inst = HAL_INSTANCE(dev);
+
+#if defined(CONFIG_FLASH_NPCX_FIU_DRA_V1)
+	if (qspi_cfg->enter_4ba != 0) {
+		if ((qspi_cfg->flags & NPCX_QSPI_SEC_FLASH_SL) != 0) {
+			inst->SPI1_DEV |= BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS11);
+		} else {
+			inst->SPI1_DEV |= BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS10);
+		}
+	} else {
+		inst->SPI1_DEV &= ~(BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS11) |
+				    BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS10));
+	}
+#elif defined(CONFIG_FLASH_NPCX_FIU_DRA_V2)
+	if (qspi_cfg->enter_4ba != 0) {
+		SET_FIELD(inst->SPI_DEV, NPCX_SPI_DEV_NADDRB, NPCX_DEV_NUM_ADDR_4BYTE);
+	}
+#endif
+#endif /* CONFIG_FLASH_NPCX_FIU_SUPP_DRA_4B_ADDR */
+}
+
 static inline void qspi_npcx_config_dra_mode(const struct device *dev,
 					     const struct npcx_qspi_cfg *qspi_cfg)
 {
 	struct fiu_reg *const inst = HAL_INSTANCE(dev);
+
+	/* Select SPI device number for DRA mode in npcx4 series */
+	if (IS_ENABLED(CONFIG_FLASH_NPCX_FIU_DRA_V2)) {
+		int spi_dev_num = (qspi_cfg->flags & NPCX_QSPI_SEC_FLASH_SL) != 0 ? 1 : 0;
+
+		SET_FIELD(inst->BURST_CFG, NPCX_BURST_CFG_SPI_DEV_SEL, spi_dev_num);
+	}
 
 	/* Enable quad mode of Direct Read Mode if needed */
 	if (qspi_cfg->qer_type != JESD216_DW15_QER_NONE) {
@@ -112,18 +144,7 @@ static inline void qspi_npcx_config_dra_mode(const struct device *dev,
 	SET_FIELD(inst->SPI_FL_CFG, NPCX_SPI_FL_CFG_RD_MODE, qspi_cfg->rd_mode);
 
 	/* Enable/Disable 4 byte address mode for Direct Read Access (DRA) */
-#if !defined(CONFIG_SOC_SERIES_NPCX7) /* NPCX7 doesn't support this feature */
-	if (qspi_cfg->enter_4ba != 0) {
-		if ((qspi_cfg->flags & NPCX_QSPI_SEC_FLASH_SL) != 0) {
-			inst->SPI1_DEV |= BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS11);
-		} else {
-			inst->SPI1_DEV |= BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS10);
-		}
-	} else {
-		inst->SPI1_DEV &= ~(BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS11) |
-				    BIT(NPCX_SPI1_DEV_FOUR_BADDR_CS10));
-	}
-#endif /* CONFIG_SOC_SERIES_NPCX7 */
+	qspi_npcx_config_dra_4byte_mode(dev, qspi_cfg);
 }
 
 static inline void qspi_npcx_fiu_set_operation(const struct device *dev, uint32_t operation)
@@ -226,7 +247,6 @@ void qspi_npcx_fiu_mutex_unlock(const struct device *dev)
 static int qspi_npcx_fiu_init(const struct device *dev)
 {
 	const struct npcx_qspi_fiu_config *const config = dev->config;
-	struct fiu_reg *const inst = HAL_INSTANCE(dev);
 	struct npcx_qspi_fiu_data *const data = dev->data;
 	const struct device *const clk_dev = DEVICE_DT_GET(NPCX_CLK_CTRL_NODE);
 	int ret;
@@ -249,9 +269,11 @@ static int qspi_npcx_fiu_init(const struct device *dev)
 
 	/* Enable direct access for 2 external SPI devices */
 	if (config->en_direct_access_2dev) {
-		if (IS_ENABLED(CONFIG_SOC_SERIES_NPCX9)) {
-			inst->FIU_EXT_CFG |= BIT(NPCX_FIU_EXT_CFG_SPI1_2DEV);
-		}
+#if defined(CONFIG_FLASH_NPCX_FIU_SUPP_DRA_2_DEV)
+		struct fiu_reg *const inst = HAL_INSTANCE(dev);
+
+		inst->FIU_EXT_CFG |= BIT(NPCX_FIU_EXT_CFG_SPI1_2DEV);
+#endif
 	}
 
 	return 0;
