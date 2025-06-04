@@ -193,7 +193,7 @@ static inline int spi_context_wait_for_completion(struct spi_context *ctx)
 		}
 
 		if (k_sem_take(&ctx->sync, timeout)) {
-			LOG_ERR("Timeout waiting for transfer complete");
+			//LOG_ERR("Timeout waiting for transfer complete");
 			return -ETIMEDOUT;
 		}
 		status = ctx->sync_status;
@@ -261,8 +261,8 @@ static inline int spi_context_cs_configure_all(struct spi_context *ctx)
 
 	for (cs_gpio = ctx->cs_gpios; cs_gpio < &ctx->cs_gpios[ctx->num_cs_gpios]; cs_gpio++) {
 		if (!device_is_ready(cs_gpio->port)) {
-			LOG_ERR("CS GPIO port %s pin %d is not ready",
-				cs_gpio->port->name, cs_gpio->pin);
+			//LOG_ERR("CS GPIO port %s pin %d is not ready",
+			//	cs_gpio->port->name, cs_gpio->pin);
 			return -ENODEV;
 		}
 
@@ -402,7 +402,7 @@ void spi_context_buffers_setup(struct spi_context *ctx,
 			       const struct spi_buf_set *rx_bufs,
 			       uint8_t dfs)
 {
-	LOG_DBG("tx_bufs %p - rx_bufs %p - %u", tx_bufs, rx_bufs, dfs);
+	//LOG_DBG("tx_bufs %p - rx_bufs %p - %u", tx_bufs, rx_bufs, dfs);
 
 	ctx->current_tx = tx_bufs ? tx_bufs->buffers : NULL;
 	ctx->tx_count = ctx->current_tx ? tx_bufs->count : 0;
@@ -422,12 +422,12 @@ void spi_context_buffers_setup(struct spi_context *ctx,
 	ctx->recv_frames = 0;
 #endif /* CONFIG_SPI_SLAVE */
 
-	LOG_DBG("current_tx %p (%zu), current_rx %p (%zu),"
-		" tx buf/len %p/%zu, rx buf/len %p/%zu",
-		ctx->current_tx, ctx->tx_count,
-		ctx->current_rx, ctx->rx_count,
-		(void *)ctx->tx_buf, ctx->tx_len,
-		(void *)ctx->rx_buf, ctx->rx_len);
+	//LOG_DBG("current_tx %p (%zu), current_rx %p (%zu),"
+	//	" tx buf/len %p/%zu, rx buf/len %p/%zu",
+	//	ctx->current_tx, ctx->tx_count,
+	//	ctx->current_rx, ctx->rx_count,
+	//	(void *)ctx->tx_buf, ctx->tx_len,
+	//	(void *)ctx->rx_buf, ctx->rx_len);
 }
 
 /*
@@ -444,7 +444,7 @@ void spi_context_update_tx(struct spi_context *ctx, uint8_t dfs, uint32_t len)
 	}
 
 	if (len > ctx->tx_len) {
-		LOG_ERR("Update exceeds current buffer");
+		//LOG_ERR("Update exceeds current buffer");
 		return;
 	}
 
@@ -461,7 +461,7 @@ void spi_context_update_tx(struct spi_context *ctx, uint8_t dfs, uint32_t len)
 		ctx->tx_buf += dfs * len;
 	}
 
-	LOG_DBG("tx buf/len %p/%zu", (void *)ctx->tx_buf, ctx->tx_len);
+	//LOG_DBG("tx buf/len %p/%zu", (void *)ctx->tx_buf, ctx->tx_len);
 }
 
 /* Returns true if there is still TX buffers left in the spi_buf_set
@@ -503,7 +503,7 @@ void spi_context_update_rx(struct spi_context *ctx, uint8_t dfs, uint32_t len)
 	}
 
 	if (len > ctx->rx_len) {
-		LOG_ERR("Update exceeds current buffer");
+		//LOG_ERR("Update exceeds current buffer");
 		return;
 	}
 
@@ -520,7 +520,7 @@ void spi_context_update_rx(struct spi_context *ctx, uint8_t dfs, uint32_t len)
 		ctx->rx_buf += dfs * len;
 	}
 
-	LOG_DBG("rx buf/len %p/%zu", (void *)ctx->rx_buf, ctx->rx_len);
+	//LOG_DBG("rx buf/len %p/%zu", (void *)ctx->rx_buf, ctx->rx_len);
 }
 
 /* Returns true if there is still RX buffers left in the spi_buf_set

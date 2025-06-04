@@ -1,0 +1,5 @@
+config SOC_PUPPY
+	bool "Pulpino SOC implementation"
+
+config SOC
+	default "puppy" if SOC_PUPPY

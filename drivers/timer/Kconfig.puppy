@@ -1,0 +1,4 @@
+ 
+config PUPPY_TIMER
+    bool "Puppy timer driver"
+    default y

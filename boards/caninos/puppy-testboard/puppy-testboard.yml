@@ -1,0 +1,12 @@
+identifier: puppy-testboard
+name: Puppy Testboard
+type: mcu
+arch: riscv32
+toolchain:
+  - zephyr
+ram: 32
+flash: 0
+testing:
+  ignore_tags:
+    - net
+    - bluetooth
