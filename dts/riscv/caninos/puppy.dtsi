@@ -24,16 +24,24 @@
 		#address-cells = <0x01>;
 		#size-cells = <0x01>;
 
-		dtim: dtim@1c000000 {
+		dtcm: dtcm@1c000000 {
 			device_type = "memory";
-			reg = <0x1c000000 0x20000>;
+			reg = <0x1c000000 0x8000>;
+			status = "okay";
 		};
 
-/*		itim: itim@1c008000 {
+		itcm: itcm@1c008000 {
 			device_type = "memory";
 			reg = <0x1c008000 0x8000>;
+			status = "okay";
 		};
-*/
+
+		intl: intl@1c010000 {
+			device-type = "memory";
+			reg = <0x1c010000 0x40000>;
+			status = "okay";
+		};
+
 		gpio0: gpio@1a101000 {
 			compatible = "caninos,puppy-gpio";
 			gpio-controller;

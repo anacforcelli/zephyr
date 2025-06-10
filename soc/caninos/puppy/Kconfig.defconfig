@@ -43,20 +43,20 @@ config NUM_IRQS
 config MP_MAX_NUM_CPUS
         default 1
 
-config ITCM_BASE_ADDRESS
-	hex
-	default	0x1c008000
+#config ITCM_BASE_ADDRESS
+#	hex
+#	default	0x1c008000
 
-config ITCM_SIZE
-	hex
-	default 0x8000
+#config ITCM_SIZE
+#	hex
+#	default 0x8000
 
-config DTCM_BASE_ADDRESS
-	hex
-	default 0x1c000000
+#config DTCM_BASE_ADDRESS
+#	hex
+#	default 0x1c000000
 
-config DTCM_SIZE
-	hex
-	default 0x8000
+#config DTCM_SIZE
+#	hex
+#	default 0x8000
 
 endif # SOC_PUPPY
