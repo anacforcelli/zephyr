@@ -24,21 +24,21 @@
 		#address-cells = <0x01>;
 		#size-cells = <0x01>;
 
-		dtcm: dtcm@1c000000 {
+		bootrom: bootrom@1c000000 {
 			device_type = "memory";
 			reg = <0x1c000000 0x8000>;
 			status = "okay";
 		};
 
-		itcm: itcm@1c008000 {
+		bootram: bootram@1c008000 {
 			device_type = "memory";
 			reg = <0x1c008000 0x8000>;
-			status = "okay";
+			staus = "okay";
 		};
 
-		intl: intl@1c010000 {
-			device-type = "memory";
-			reg = <0x1c010000 0x40000>;
+		sram: sram@1c010000 {
+			device_type = "memory";
+			reg = <0x1c010000 0x80000>;
 			status = "okay";
 		};
 
