@@ -282,11 +282,13 @@ static int siwx91x_apply_power_save(struct siwx91x_dev *sidev)
 
 	interface = sl_wifi_get_default_interface();
 	if (FIELD_GET(SIWX91X_INTERFACE_MASK, interface) != SL_WIFI_CLIENT_INTERFACE) {
-		return 0;
+		LOG_ERR("Wi-Fi not in station mode");
+		return -EINVAL;
 	}
 
 	if (sidev->state == WIFI_STATE_INTERFACE_DISABLED) {
-		return 0;
+		LOG_ERR("Command given in invalid state");
+		return -EINVAL;
 	}
 
 	sl_wifi_get_performance_profile(&sl_ps_profile);
@@ -479,7 +481,7 @@ static unsigned int siwx91x_on_join(sl_wifi_event_t event,
 static int siwx91x_status(const struct device *dev, struct wifi_iface_status *status)
 {
 	sl_wifi_interface_t interface = sl_wifi_get_default_interface();
-	sl_si91x_rsp_wireless_info_t wlan_info = { };
+	sl_wifi_wireless_info_t wlan_info = { };
 	struct siwx91x_dev *sidev = dev->data;
 	uint8_t join_config;
 	int32_t rssi;
@@ -502,7 +504,6 @@ static int siwx91x_status(const struct device *dev, struct wifi_iface_status *st
 
 	strncpy(status->ssid, wlan_info.ssid, WIFI_SSID_MAX_LEN);
 	status->ssid_len = strlen(status->ssid);
-	memcpy(status->bssid, wlan_info.bssid, WIFI_MAC_ADDR_LEN);
 	status->wpa3_ent_type = WIFI_WPA3_ENTERPRISE_NA;
 
 	if (interface & SL_WIFI_2_4GHZ_INTERFACE) {
@@ -553,6 +554,7 @@ static int siwx91x_status(const struct device *dev, struct wifi_iface_status *st
 
 		status->beacon_interval = sys_get_le16(operational_statistics.beacon_interval);
 		status->dtim_period = operational_statistics.dtim_period;
+		memcpy(status->bssid, wlan_info.bssid, WIFI_MAC_ADDR_LEN);
 	} else if (FIELD_GET(SIWX91X_INTERFACE_MASK, interface) == SL_WIFI_AP_INTERFACE) {
 		sl_wifi_ap_configuration_t sl_ap_cfg = { };
 
@@ -569,6 +571,7 @@ static int siwx91x_status(const struct device *dev, struct wifi_iface_status *st
 		status->beacon_interval = sl_ap_cfg.beacon_interval;
 		status->dtim_period = sl_ap_cfg.dtim_beacon_count;
 		wlan_info.sec_type = (uint8_t)sl_ap_cfg.security;
+		memcpy(status->bssid, wlan_info.mac_address, WIFI_MAC_ADDR_LEN);
 	} else {
 		status->link_mode = WIFI_LINK_MODE_UNKNOWN;
 		status->iface_mode = WIFI_MODE_UNKNOWN;
@@ -638,6 +641,9 @@ static int siwx91x_ap_disable(const struct device *dev)
 		return -EIO;
 	}
 
+	if (IS_ENABLED(CONFIG_WIFI_SILABS_SIWX91X_NET_STACK_NATIVE)) {
+		net_if_dormant_on(sidev->iface);
+	}
 	wifi_mgmt_raise_ap_disable_result_event(sidev->iface, WIFI_STATUS_AP_SUCCESS);
 	sidev->state = WIFI_STATE_INTERFACE_DISABLED;
 	return ret;
@@ -844,6 +850,9 @@ static int siwx91x_ap_enable(const struct device *dev, struct wifi_connect_req_p
 		LOG_ERR("Failed to enable AP mode: 0x%x", ret);
 		wifi_mgmt_raise_ap_enable_result_event(sidev->iface, WIFI_STATUS_AP_FAIL);
 		return -EIO;
+	}
+	if (IS_ENABLED(CONFIG_WIFI_SILABS_SIWX91X_NET_STACK_NATIVE)) {
+		net_if_dormant_off(sidev->iface);
 	}
 
 	return 0;
@@ -1328,6 +1337,7 @@ static int siwx91x_ap_config_params(const struct device *dev, struct wifi_ap_con
 static int siwx91x_send(const struct device *dev, struct net_pkt *pkt)
 {
 	size_t pkt_len = net_pkt_get_len(pkt);
+	sl_wifi_interface_t interface;
 	struct net_buf *buf = NULL;
 	int ret;
 
@@ -1344,8 +1354,9 @@ static int siwx91x_send(const struct device *dev, struct net_pkt *pkt)
 		return -ENOBUFS;
 	}
 	net_buf_add(buf, pkt_len);
-
-	ret = sl_wifi_send_raw_data_frame(SL_WIFI_CLIENT_INTERFACE, buf->data, pkt_len);
+	interface = sl_wifi_get_default_interface();
+	ret = sl_wifi_send_raw_data_frame(FIELD_GET(SIWX91X_INTERFACE_MASK, interface),
+					  buf->data, pkt_len);
 	if (ret) {
 		net_buf_unref(buf);
 		return -EIO;
@@ -1484,6 +1495,9 @@ static void siwx91x_iface_init(struct net_if *iface)
 	}
 	net_if_set_link_addr(iface, sidev->macaddr.octet, sizeof(sidev->macaddr.octet),
 			     NET_LINK_ETHERNET);
+	if (IS_ENABLED(CONFIG_WIFI_SILABS_SIWX91X_NET_STACK_NATIVE)) {
+		net_if_dormant_on(sidev->iface);
+	}
 	siwx91x_sock_init(iface);
 	siwx91x_ethernet_init(iface);
 
@@ -1554,10 +1568,10 @@ static int siwx91x_set_twt_setup(struct wifi_twt_params *params)
 
 	if (params->setup.twt_wake_interval > 255 * 256) {
 		twt_req.wake_duration_unit = 1;
-		twt_req.wake_duration = params->setup.twt_wake_interval / 256;
+		twt_req.wake_duration = params->setup.twt_wake_interval / 1024;
 	} else {
 		twt_req.wake_duration_unit = 0;
-		twt_req.wake_duration = params->setup.twt_wake_interval / 1024;
+		twt_req.wake_duration = params->setup.twt_wake_interval / 256;
 	}
 
 	status = sl_wifi_enable_target_wake_time(&twt_req);
