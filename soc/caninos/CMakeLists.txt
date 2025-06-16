@@ -14,3 +14,5 @@ zephyr_sources(
   )
 
 set(SOC_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld CACHE INTERNAL "")
+
+add_subdirectory(${CONFIG_SOC})

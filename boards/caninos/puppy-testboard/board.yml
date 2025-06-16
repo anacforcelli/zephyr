@@ -2,4 +2,4 @@ board:
   name: puppy-testboard
   vendor: caninos
   socs:
-  - name: puppy
+  - name: puppy_v1

@@ -1,0 +1,12 @@
+identifier: poodleino-toy-v1
+name: Poodleino Toy v1.0
+type: mcu
+arch: riscv32
+toolchain:
+  - zephyr
+ram: 32
+flash: 0
+testing:
+  ignore_tags:
+    - net
+    - bluetooth

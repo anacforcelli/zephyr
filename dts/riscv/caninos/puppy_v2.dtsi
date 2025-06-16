@@ -1,0 +1,110 @@
+/dts-v1/;
+
+#include "zephyr/dt-bindings/gpio/gpio.h"
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "caninos,puppy";
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			status = "okay";
+			compatible = "riscv";
+			riscv,isa = "rv32imfc";
+			reg = <0>;
+		};
+	};
+
+	soc {
+		#address-cells = <0x01>;
+		#size-cells = <0x01>;
+
+		dtcm: dtcm@1c000000 {
+			device_type = "memory";
+			reg = <0x1c000000 0x8000>;
+			status = "okay";
+		};
+
+		itcm: itcm@1c008000 {
+			device_type = "memory";
+			reg = <0x1c008000 0x8000>;
+			status = "okay";
+		};
+
+		intl: intl@1c010000 {
+			device-type = "memory";
+			reg = <0x1c010000 0x40000>;
+			status = "okay";
+		};
+
+		gpio0: gpio@1a101000 {
+			compatible = "caninos,puppy-gpio";
+			gpio-controller;
+			reg = <0x1a101000 0x1000>;
+			interrupts = <15>;
+			interrupt-parent = <&intc>;
+			#gpio-cells = <2>;
+		};
+
+		uart0: uart@1a102080 {
+			compatible = "caninos,puppy-uart";
+			uart-controller;
+			reg = <0x1a102080 0x54>;
+			interrupts = <8>;
+			interrupt-parent = <&intc>;
+			uart-id = <0>;
+		};
+
+		spi0: spi@1a102100 {
+			compatible = "caninos,puppy-spi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1a102100 0x28>;
+			interrupts = <8>;
+			interrupt-parent = <&intc>;
+			spi-id = <0>;
+		};
+
+		spi1: spi@1a102180 {
+			compatible = "caninos,puppy-spi";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1a102180 0x28>;
+			interrupts = <8>;
+			interrupt-parent = <&intc>;
+			spi-id = <0>;
+		};
+
+		i2c0: i2c@1a102200 {
+			compatible = "caninos,puppy-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1a102200 0x34>;
+			interrupts = <26>;
+			interrupt-parent = <&intc>;
+			i2c-id = <0>;
+		};
+
+		i2c1: i2c@1a102280 {
+			compatible = "caninos,puppy-i2c";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1a102280 0x34>;
+			interrupts = <26>;
+			interrupt-parent = <&intc>;
+			i2c-id = <1>;
+		};
+
+		intc: interrupt-controller@1a109000 {
+			#interrupt-cells = <1>;
+			compatible = "caninos,puppy-event-unit";
+			interrupt-controller;
+			reg = <0x1a109000 0x1000>;
+		};
+	};
+};
