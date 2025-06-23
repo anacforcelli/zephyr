@@ -5,13 +5,17 @@
  */
 
 #include <arm/armv8-m.dtsi>
+#include <zephyr/dt-bindings/adc/adc.h>
+#include <zephyr/dt-bindings/adc/stm32u5_adc.h>
 #include <zephyr/dt-bindings/clock/stm32u3_clock.h>
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/reset/stm32u3_reset.h>
 #include <freq.h>
 
 / {
 	chosen {
+		zephyr,entropy = &rng;
 		zephyr,flash-controller = &flash;
 	};
 
@@ -229,6 +233,67 @@
 			clocks = <&rcc STM32_CLOCK(APB3, 6)>;
 			resets = <&rctl STM32_RESET(APB3, 6)>;
 			interrupts = <66 0>;
+			status = "disabled";
+		};
+
+		adc1: adc@42028000 {
+			compatible = "st,stm32n6-adc", "st,stm32-adc";
+			reg = <0x42028000 0x400>;
+			clocks = <&rcc STM32_CLOCK(AHB2, 10)>;
+			interrupts = <37 0>;
+			#io-channel-cells = <1>;
+			resolutions = <STM32_ADC_RES(12, 0x00)
+				       STM32_ADC_RES(10, 0x01)
+				       STM32_ADC_RES(8, 0x02)
+				       STM32_ADC_RES(6, 0x03)>;
+			sampling-times = <2 3 7 12 24 47 247 1500>;
+			st,adc-sequencer = "FULLY_CONFIGURABLE";
+			st,adc-oversampler = "OVERSAMPLER_EXTENDED";
+			status = "disabled";
+		};
+
+		adc2: adc@42028100 {
+			compatible = "st,stm32n6-adc", "st,stm32-adc";
+			reg = <0x42028100 0x400>;
+			clocks = <&rcc STM32_CLOCK(AHB2, 10)>;
+			interrupts = <113 0>;
+			#io-channel-cells = <1>;
+			resolutions = <STM32_ADC_RES(12, 0x00)
+				       STM32_ADC_RES(10, 0x01)
+				       STM32_ADC_RES(8, 0x02)
+				       STM32_ADC_RES(6, 0x03)>;
+			sampling-times = <2 3 7 12 24 47 247 1500>;
+			st,adc-sequencer = "FULLY_CONFIGURABLE";
+			st,adc-oversampler = "OVERSAMPLER_EXTENDED";
+			status = "disabled";
+		};
+
+		dac1: dac@42028400 {
+			compatible = "st,stm32-dac";
+			reg = <0x42028400 0x400>;
+			clocks = <&rcc STM32_CLOCK(AHB2, 11)>;
+			#io-channel-cells = <1>;
+			status = "disabled";
+		};
+
+		rng: rng@420c0800 {
+			compatible = "st,stm32-rng";
+			reg = <0x420c0800 0x400>;
+			clocks = <&rcc STM32_CLOCK(AHB2, 18)>;
+			interrupts = <94 0>;
+			status = "disabled";
+		};
+
+		gpdma1: dma@40020000 {
+			compatible = "st,stm32u5-dma";
+			#dma-cells = <3>;
+			reg = <0x40020000 0x400>;
+			interrupts = <29 0 30 0 31 0 32 0 33 0 34 0 35 0 36 0
+					80 0 81 0 82 0 83 0>;
+			clocks = <&rcc STM32_CLOCK(AHB1, 0)>;
+			dma-channels = <12>;
+			dma-requests = <114>;
+			dma-offset = <0>;
 			status = "disabled";
 		};
 	};
