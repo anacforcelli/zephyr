@@ -109,8 +109,8 @@ static int uart_puppy_async_callback_set(const struct device *dev, uart_callback
 	data->async.user_data = user_data;
 
 #if defined(CONFIG_UART_EXCLUSIVE_API_CALLBACKS)
-	data->irq_cb = NULL;
-	data->irq_cb_data = NULL;
+	data->async.cb = NULL;
+	data->async.user_data = NULL;
 #endif
 
 	return 0;

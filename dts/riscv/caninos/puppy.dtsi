@@ -26,14 +26,8 @@
 
 		bootrom: bootrom@1c000000 {
 			device_type = "memory";
-			reg = <0x1c000000 0x8000>;
+			reg = <0x1c000000 0xF000>;
 			status = "okay";
-		};
-
-		bootram: bootram@1c008000 {
-			device_type = "memory";
-			reg = <0x1c008000 0x8000>;
-			staus = "okay";
 		};
 
 		sram: sram@1c010000 {
