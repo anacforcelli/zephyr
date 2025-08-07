@@ -428,6 +428,8 @@ endmacro()
 
 # Constructor with a directory-inferred name
 macro(zephyr_library)
+  zephyr_check_no_arguments(zephyr_library ${ARGN})
+
   zephyr_library_get_current_dir_lib_name(${ZEPHYR_BASE} lib_name)
   zephyr_library_named(${lib_name})
 endmacro()
@@ -452,6 +454,8 @@ endmacro()
 
 # Constructor with an explicitly given name.
 macro(zephyr_library_named name)
+  zephyr_check_no_arguments(zephyr_library_named ${ARGN})
+
   # This is a macro because we need add_library() to be executed
   # within the scope of the caller.
   set(ZEPHYR_CURRENT_LIBRARY ${name})
@@ -5739,6 +5743,20 @@ macro(zephyr_check_flags_exclusive function prefix)
   endif()
 endmacro()
 
+#
+# Helper macro for verifying that no unexpected arguments are provided.
+#
+# A FATAL_ERROR will be raised if any unexpected argument is given.
+#
+# Usage:
+#   zephyr_check_no_arguments(<function_name> ${ARGN})
+#
+macro(zephyr_check_no_arguments function)
+  if(${ARGC} GREATER 1)
+    message(FATAL_ERROR "${function} called with unexpected argument(s): ${ARGN}")
+  endif()
+endmacro()
+
 ########################################################
 # 7. Linkable loadable extensions (llext)
 ########################################################
@@ -5915,7 +5933,7 @@ function(add_llext_target target_name)
   # dynamic library.
   set(llext_proc_target ${target_name}_llext_proc)
   set(llext_pkg_input ${PROJECT_BINARY_DIR}/llext/${target_name}_debug.elf)
-  add_custom_target(${llext_proc_target} DEPENDS ${llext_pkg_input})
+  add_custom_target(${llext_proc_target} DEPENDS ${llext_lib_target} ${llext_lib_output})
   set_property(TARGET ${llext_proc_target} PROPERTY has_post_build_cmds 0)
 
   # By default this target must copy the `lib_output` binary file to the
@@ -5927,7 +5945,7 @@ function(add_llext_target target_name)
   add_custom_command(
     OUTPUT ${llext_pkg_input}
     COMMAND "$<IF:${has_post_build_cmds},${noop_cmd},${copy_cmd}>"
-    DEPENDS ${llext_lib_target} ${llext_lib_output}
+    DEPENDS ${llext_proc_target}
     COMMAND_EXPAND_LISTS
   )
 
@@ -5947,9 +5965,24 @@ function(add_llext_target target_name)
     set(slid_inject_cmd ${CMAKE_COMMAND} -E true)
   endif()
 
+  # When using the arcmwdt toolchain, the compiler may emit hundreds of
+  # .arcextmap.* sections that bloat the shstrtab. stripac removes
+  # these sections, but it does not remove their names from the shstrtab.
+  # Use GNU strip to remove these sections beforehand.
+  if (${ZEPHYR_TOOLCHAIN_VARIANT} STREQUAL "arcmwdt")
+    set(gnu_strip_for_mwdt_cmd
+      ${CMAKE_GNU_STRIP}
+      --remove-section=.arcextmap* --strip-unneeded
+      ${llext_pkg_input}
+    )
+  else()
+    set(gnu_strip_for_mwdt_cmd ${CMAKE_COMMAND} -E true)
+  endif()
+
   # Remove sections that are unused by the llext loader
   add_custom_command(
     OUTPUT ${llext_pkg_output}
+    COMMAND ${gnu_strip_for_mwdt_cmd}
     COMMAND $<TARGET_PROPERTY:bintools,elfconvert_command>
             $<TARGET_PROPERTY:bintools,elfconvert_flag>
             $<TARGET_PROPERTY:bintools,elfconvert_flag_strip_unneeded>
@@ -5959,7 +5992,7 @@ function(add_llext_target target_name)
             $<TARGET_PROPERTY:bintools,elfconvert_flag_outfile>${llext_pkg_output}
             $<TARGET_PROPERTY:bintools,elfconvert_flag_final>
     COMMAND ${slid_inject_cmd}
-    DEPENDS ${llext_proc_target} ${llext_pkg_input}
+    DEPENDS ${llext_pkg_input}
     COMMAND_EXPAND_LISTS
   )
 

@@ -22,6 +22,7 @@ set(BLOBS_DIR      ${ZEPHYR_HAL_SILABS_MODULE_DIR}/zephyr/blobs/simplicity_sdk)
 # Translate the SoC name and part number into the gecko device and cpu name
 # respectively.
 string(TOUPPER ${CONFIG_SOC_SERIES} SILABS_DEVICE_FAMILY)
+string(TOUPPER ${CONFIG_SOC} SILABS_DEVICE_PART_NUMBER)
 
 # Get SoC series number, i.e. translate efr32bg22 -> 22, mgm240p -> 24, simg301 -> 301
 if(CONFIG_SOC_SERIES MATCHES "^ef[rm]32")
@@ -33,8 +34,6 @@ elseif(CONFIG_SOC_SERIES MATCHES "^.gm")
 else()
   message(FATAL_ERROR "unknown part")
 endif()
-
-set(SILABS_DEVICE_PART_NUMBER ${CONFIG_SOC_PART_NUMBER})
 
 function(add_prebuilt_library lib_name prebuilt_path)
   if(NOT CONFIG_BUILD_ONLY_NO_BLOBS)
@@ -102,13 +101,28 @@ if(CONFIG_SOC_GECKO_HAS_RADIO)
     endif()
     zephyr_library_sources(${RADIO_DIR}/rail_lib/plugin/pa-conversions/pa_conversions_efr32.c)
 
+    if(CONFIG_SILABS_SISDK_RAIL_MULTIPROTOCOL)
+      zephyr_compile_definitions(SL_RAIL_LIB_MULTIPROTOCOL_SUPPORT=1)
+    else()
+      zephyr_compile_definitions(SL_RAIL_LIB_MULTIPROTOCOL_SUPPORT=0)
+    endif()
+
     if(CONFIG_SILABS_DEVICE_IS_MODULE)
       # RAIL lib and config for modules
-      add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_module_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      if(CONFIG_SILABS_SISDK_RAIL_MULTIPROTOCOL)
+        add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_multiprotocol_module_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      else()
+        add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_module_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      endif()
+
       add_prebuilt_library(librail_config platform/radio/rail_lib/autogen/librail_release/librail_config_${CONFIG_SOC}_gcc.a)
     else()
       # generic RAIL lib for SoCs
-      add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      if(CONFIG_SILABS_SISDK_RAIL_MULTIPROTOCOL)
+        add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_multiprotocol_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      else()
+        add_prebuilt_library(librail platform/radio/rail_lib/autogen/librail_release/librail_efr32xg${SILABS_DEVICE_FAMILY_NUMBER}_gcc_release.a)
+      endif()
     endif()
 
     zephyr_include_directories_ifdef(CONFIG_SOC_GECKO_CUSTOM_RADIO_PHY
@@ -262,10 +276,22 @@ if(CONFIG_SOC_GECKO_GPIO)
   )
 endif()
 
+if(CONFIG_SILABS_SISDK_GPIO)
+  zephyr_library_sources(
+    ${PERIPHERAL_DIR}/src/sl_hal_gpio.c
+  )
+  zephyr_library_compile_definitions(
+    SL_CATALOG_GPIO_PRESENT
+    SL_CODE_COMPONENT_HAL_GPIO=hal_gpio
+  )
+endif()
+
+zephyr_library_sources_ifdef(CONFIG_SILABS_SISDK_LETIMER   ${PERIPHERAL_DIR}/src/sl_hal_letimer.c)
+zephyr_library_sources_ifdef(CONFIG_SILABS_SISDK_TIMER     ${PERIPHERAL_DIR}/src/sl_hal_timer.c)
+
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_LDMA         ${EMDRV_DIR}/dmadrv/src/dmadrv.c)
 
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_I2C          ${EMLIB_DIR}/src/em_i2c.c)
-zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_LETIMER      ${EMLIB_DIR}/src/em_letimer.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_LEUART       ${EMLIB_DIR}/src/em_leuart.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_MSC          ${EMLIB_DIR}/src/em_msc.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_LDMA         ${EMLIB_DIR}/src/em_ldma.c)
@@ -274,7 +300,6 @@ zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_RMU          ${EMLIB_DIR}/src/em_r
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_RTC          ${EMLIB_DIR}/src/em_rtc.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_RTCC         ${EMLIB_DIR}/src/em_rtcc.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_EUSART       ${EMLIB_DIR}/src/em_eusart.c)
-zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_TIMER        ${EMLIB_DIR}/src/em_timer.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_USART        ${EMLIB_DIR}/src/em_usart.c)
 zephyr_library_sources_ifdef(CONFIG_SOC_GECKO_WDOG         ${EMLIB_DIR}/src/em_wdog.c)
 
