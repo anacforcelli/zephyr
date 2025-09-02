@@ -131,6 +131,12 @@ function(zephyr_mcuboot_tasks)
     dt_reg_addr(slot1_partition_address PATH ${slot1_partition})
 
     dt_prop(write_block_size PATH "${flash_node}" PROPERTY "write-block-size")
+
+    if(NOT write_block_size)
+      set(write_block_size 4)
+      message(WARNING "slot0_partition write block size devicetree parameter is missing, assuming write block size is 4")
+    endif()
+
     set(imgtool_args --align ${write_block_size} --load-addr ${chosen_ram_address} ${imgtool_args})
     set(imgtool_args_alt_slot ${imgtool_args} --hex-addr ${slot1_partition_address})
     set(imgtool_args ${imgtool_args} --hex-addr ${slot0_partition_address})

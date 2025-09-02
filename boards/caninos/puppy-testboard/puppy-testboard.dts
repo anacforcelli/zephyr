@@ -3,102 +3,107 @@
 #include <zephyr/dt-bindings/gpio/gpio.h>
 
 / {
-    model = "puppy-testboard-v1";
-    compatible = "caninos,puppy-testboard";
+	model = "puppy-testboard-v1";
+	compatible = "caninos,puppy-testboard";
 
-    chosen {
-        mcuboot,ram-load-dev = &sram;
-        zephyr,flash-controller = &spi0;
-        zephyr,sram = &sram;
-	zephyr,flash= &bootrom;
-        zephyr,console = &uart0;
-        zephyr,shell-uart = &uart0;
-    };
+	chosen {
+		mcuboot,ram-load-dev = &sram;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,flash-controller = &spi0;
+		zephyr,sram = &sram;
+		zephyr,flash = &flash0;
+		zephyr,console = &uart0;
+		//zephyr,shell-uart = &uart1;
+		zephyr,uart-mcumgr = &uart0;
+	};
 
-    aliases {
-        led0 = &led0;
-	mcuboot-button0 = &button0;
-	mcuboot-led0 = &led0;
-    };
+	aliases {
+		led0 = &led0;
+		mcuboot-button0 = &button0;
+		mcuboot-led0 = &led0;
+		eeprom-0 = &flash0;
+	};
 
-    leds {
-        compatible = "gpio-leds";
-        led0: led_0 {
-            gpios = <&gpio0 20 GPIO_ACTIVE_HIGH>;
-            label = "LED0";
-        };
-    };
+	leds {
+		compatible = "gpio-leds";
 
-    buttons {
-	    compatible = "gpio-keys";
-	    button0: button_0 {
-		    gpios = < &gpio0 0 GPIO_ACTIVE_HIGH>;
-		    label = "User button";
-	    };
-    };
+		led0: led_0 {
+			gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>; // led3 on schematics
+			label = "LED0";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = < &gpio0 10 GPIO_ACTIVE_HIGH>;
+			label = "User button";
+		};
+	};
 };
 
 &intc {
-    status = "okay";
+	status = "okay";
 };
 
 &gpio0 {
-    status = "okay";
+	status = "okay";
 };
 
 &uart0 {
-    status = "okay";
-    current-speed = <1250000>;
-    parity = "none";
+	status = "okay";
+	current-speed = <115200>;
+	parity = "none";
 };
 
+
 &spi0 {
-    status = "okay";
+	status = "okay";
 
-    flash0: flash@0 {
-        compatible = "jedec,spi-nor";
-        reg = <0>;
-        jedec-id = [EF 40 17];
-        spi-max-frequency = <1000000>;
-        size = <DT_SIZE_M(16)>;
-        status = "okay";
+	flash0: flash@0 {
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <20000000>;
+		size = <DT_SIZE_M(8)>;
+		status = "okay";
 
-        partitions {
-            compatible = "fixed-partitions";
-            #size-cells = <1>;
-            #address-cells = <1>;
+		partitions {
+			compatible = "fixed-partitions";
+			#size-cells = <1>;
+			#address-cells = <1>;
 
-            boot_partition: partition@0 {
-                reg = <0 0x10000>;
-                label = "boot_partition";
-                read-only;
-            };
+			boot_partition: partition@1000 { // 65536B for bootloader
+				reg = <0x1000 0x10000>;
+				label = "boot_partition";
+				read-only;
+			};
 
-            slot0_partition: partition@10000 {
-                reg = <0x10000 0x40000>;
-                label = "slot0";
-	    };
+			slot0_partition: partition@11000 { // 242144B for each image
+				reg = <0x11000 0x40000>;
+				label = "slot0";
+			};
 
-	    slot1_partition: partition@50000 {
-		    reg = <0x50000 0x40000>;
-		    label = "slot1";
-	    };
+			slot1_partition: partition@51000 {
+				reg = <0x51000 0x40000>;
+				label = "slot1";
+			};
 
-            user_sketch: partition@F0000 {
-                reg = <0xF0000 0xF0000>;
-            };
-        };
-    };
+			user_sketch: partition@F1000 { // 262144B for sketch
+				reg = <0xF1000 0x40000>;
+			};
+		};
+	};
 };
 
 &i2c0 {
-    status = "okay";
-    clock-frequency = <100000>;
+	status = "okay";
+	clock-frequency = <100000>;
 };
 
 &i2c1 {
-    status = "okay";
-    clock-frequency = <100000>;
-    sda-pin = <24>;
-    scl-pin = <25>;
+	status = "okay";
+	clock-frequency = <100000>;
+	sda-pin = <24>;
+	scl-pin = <25>;
 };
