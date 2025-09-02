@@ -4,8 +4,6 @@ type: mcu
 arch: riscv32
 toolchain:
   - zephyr
-ram: 32
-flash: 32
 testing:
   ignore_tags:
     - net
