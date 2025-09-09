@@ -79,18 +79,18 @@
 				read-only;
 			};
 
-			slot0_partition: partition@11000 { // 242144B for each image
-				reg = <0x11000 0x40000>;
+			slot0_partition: partition@11000 { // 458752B for each image
+				reg = <0x11000 0x70000>;
 				label = "slot0";
 			};
 
-			slot1_partition: partition@51000 {
-				reg = <0x51000 0x40000>;
+			slot1_partition: partition@71000 {
+				reg = <0x71000 0x70000>;
 				label = "slot1";
 			};
 
-			user_sketch: partition@F1000 { // 262144B for sketch
-				reg = <0xF1000 0x40000>;
+			user_sketch: partition@E1000 { // 262144B for sketch
+				reg = <0xE1000 0x40000>;
 			};
 		};
 	};
