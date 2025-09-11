@@ -2,33 +2,14 @@
 
 #include <errno.h>
 #include <soc.h>
+#include <zephyr/arch/common/sys_bitops.h>
 #include <zephyr/drivers/gpio.h>
 #include "zephyr/drivers/gpio/gpio_utils.h"
-
-/* Puppy GPIO register-set structure */
-struct __packed gpio_puppy_t
-{
-	uint32_t paddir;
-	uint32_t gpioen;
-	uint32_t padin;
-	uint32_t padout;
-	uint32_t padoutset;
-	uint32_t padoutclr;
-	uint32_t inten;
-	uint32_t inttype_00_15;
-	uint32_t inttype_16_31;
-	uint32_t intstatus;
-	uint32_t padcfg_00_07;
-	uint32_t padcfg_08_15;
-	uint32_t padcfg_16_23;
-	uint32_t padcfg_24_31;
-};
+#include "gpio_puppy.h"
 
 struct gpio_puppy_config
-{
+{	
 	uint32_t base;
-	volatile struct gpio_puppy_t *gpio;
-	struct gpio_driver_data common;
 };
 
 struct gpio_puppy_data
@@ -66,23 +47,28 @@ gpio_puppy_configure(const struct device *dev,
 	if ((flags & GPIO_INPUT) && (flags & GPIO_OUTPUT))
 	{
 		PULP_PADMUX(group) &= ~(PULP_PAD_GPIO << pad_bit);
-		config->gpio->gpioen &= ~BIT(pin);
+		sys_write32(sys_read32(config->base + GPIO_REG_GPIOEN) & ~BIT(pin), config->base + GPIO_REG_GPIOEN);
 	}
 	else if ((flags & GPIO_INPUT) || (flags & GPIO_OUTPUT))
 	{
 		PULP_PADMUX(group) |= (PULP_PAD_GPIO << pad_bit);
-		config->gpio->gpioen |= BIT(pin);
+		sys_write32( sys_read32(config->base + GPIO_REG_GPIOEN) | BIT(pin), config->base + GPIO_REG_GPIOEN);
 	}
 
 	/* Configure gpio direction */
-	if (flags & GPIO_OUTPUT)
-		config->gpio->paddir |= BIT(pin);
-	else if (flags & GPIO_INPUT)
-		config->gpio->paddir &= ~BIT(pin);
-	else if (flags & GPIO_OUTPUT_INIT_HIGH)
-		config->gpio->padout |= BIT(pin);
-	else if (flags & GPIO_OUTPUT_INIT_LOW)
-		config->gpio->padout &= ~BIT(pin);
+	if (flags & GPIO_INPUT)
+
+		sys_write32(sys_read32(config->base + GPIO_REG_PADDIR) & ~BIT(pin), config->base + GPIO_REG_PADDIR);
+
+	else if (flags & GPIO_OUTPUT)
+	{
+		sys_write32(sys_read32(config->base + GPIO_REG_PADDIR) | BIT(pin), config->base + GPIO_REG_PADDIR);
+
+		if (flags & GPIO_OUTPUT_INIT_HIGH)
+			sys_write32(config->base + GPIO_REG_PADOUTSET, BIT(pin));
+		else
+			sys_write32(config->base + GPIO_REG_PADOUTCLR, BIT(pin));
+	}
 
 	/*
 	 * Configure interrupt if GPIO_INT is set.
@@ -100,25 +86,6 @@ gpio_puppy_configure(const struct device *dev,
 	if (!(flags & GPIO_INT_EDGE))
 		return -ENOTSUP;
 
-	/*
-	 * Configure interrupt edge sensitivity.
-	 * 2'b00 : falling edge
-	 * 2'b01 : rising edge
-	 * 2'b10 : both edges
-	 * 2'b11 : Reserved
-	 */
-	int edge_val = ((flags >> 25) - 1) & 0x3;
-	if (pin < 16)
-	{
-		config->gpio->inttype_00_15 &= ~pad_bit;
-		config->gpio->inttype_00_15 |= edge_val << pad_bit;
-	}
-	else
-	{
-		config->gpio->inttype_16_31 &= ~(0x3 << pad_bit);
-		config->gpio->inttype_16_31 |= edge_val << pad_bit;
-	}
-
 	return 0;
 }
 
@@ -131,11 +98,11 @@ gpio_puppy_configure(const struct device *dev,
  * @return 0 if successful, failed otherwise
  */
 static int gpio_puppy_port_get_raw(const struct device *dev,
-								   uint32_t *value)
+								   gpio_port_value_t *value)
 {
 	const struct gpio_puppy_config *config = dev->config;
 
-	*value = config->gpio->padin;
+	*value = sys_read32(config->base + GPIO_REG_PADIN);
 
 	return 0;
 }
@@ -150,12 +117,15 @@ static int gpio_puppy_port_get_raw(const struct device *dev,
  * @return 0 if successful, failed otherwise
  */
 static int gpio_puppy_port_set_masked_raw(const struct device *dev,
-										  uint32_t mask,
-										  uint32_t value)
+										  gpio_port_pins_t mask,
+										  gpio_port_value_t value)
 {
 	const struct gpio_puppy_config *config = dev->config;
 
-	config->gpio->padout = (config->gpio->padout & ~mask) | (mask & value);
+	if(mask & value)
+		sys_write32(mask & value, config->base + GPIO_REG_PADOUTSET);
+	if(mask & ~value)
+		sys_write32(mask & ~value, config->base + GPIO_REG_PADOUTCLR);
 
 	return 0;
 }
@@ -169,11 +139,11 @@ static int gpio_puppy_port_set_masked_raw(const struct device *dev,
  * @return 0 if successful, failed otherwise
  */
 static int gpio_puppy_port_set_bits_raw(const struct device *dev,
-										uint32_t mask)
+										gpio_port_pins_t mask)
 {
 	const struct gpio_puppy_config *config = dev->config;
 
-	config->gpio->padout |= mask;
+	sys_write32(mask, config->base + GPIO_REG_PADOUTSET);
 
 	return 0;
 }
@@ -187,11 +157,11 @@ static int gpio_puppy_port_set_bits_raw(const struct device *dev,
  * @return 0 if successful, failed otherwise
  */
 static int gpio_puppy_port_clear_bits_raw(const struct device *dev,
-										  uint32_t mask)
+										  gpio_port_pins_t mask)
 {
 	const struct gpio_puppy_config *config = dev->config;
 
-	config->gpio->padout &= ~mask;
+	sys_write32(mask, config->base + GPIO_REG_PADOUTCLR);
 
 	return 0;
 }
@@ -205,11 +175,13 @@ static int gpio_puppy_port_clear_bits_raw(const struct device *dev,
  * @return 0 if successful, failed otherwise
  */
 static int gpio_puppy_port_toggle_bits(const struct device *dev,
-									   uint32_t mask)
+									   gpio_port_pins_t mask)
 {
 	const struct gpio_puppy_config *config = dev->config;
 
-	config->gpio->padout ^= mask;
+	uint32_t value = sys_read32(config->base + GPIO_REG_PADOUT);
+	
+	return gpio_puppy_port_set_masked_raw(dev, mask, ~value);
 
 	return 0;
 }
@@ -233,44 +205,40 @@ static int gpio_puppy_pin_interrupt_configure(const struct device *dev,
 
 	if (mode == GPIO_INT_MODE_DISABLED)
 	{
-		config->gpio->inten &= ~BIT(pin);
+		sys_write32(sys_read32(config->base + GPIO_REG_INTEN) & ~BIT(pin), config->base + GPIO_REG_INTEN);
+		return 0;
+	}
+
+	if(mode == GPIO_INT_MODE_LEVEL)
+		return -ENOTSUP;
+
+	switch (trig)
+	{
+	case GPIO_INT_TRIG_LOW:
+		inttype = 0;
+		break;
+	case GPIO_INT_TRIG_HIGH:
+		inttype = 1;
+		break;
+	case GPIO_INT_TRIG_BOTH:
+		inttype = 2;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	if (pin < 16)
+	{
+		sys_write32(sys_read32(config->base + GPIO_REG_INTTYPE_00_15) & ~(0x3 << (pin * 2)), config->base + GPIO_REG_INTTYPE_00_15);
+		sys_write32(sys_read32(config->base + GPIO_REG_INTTYPE_00_15) | (inttype << (pin * 2)), config->base + GPIO_REG_INTTYPE_00_15);
 	}
 	else
 	{
-		if (mode == GPIO_INT_MODE_LEVEL)
-		{
-			return -ENOTSUP;
-		}
-		else
-		{
-			switch (trig)
-			{
-			case GPIO_INT_TRIG_LOW:
-				inttype = 0;
-				break;
-			case GPIO_INT_TRIG_HIGH:
-				inttype = 1;
-				break;
-			case GPIO_INT_TRIG_BOTH:
-				inttype = 2;
-				break;
-			default:
-				return -EINVAL;
-			}
-
-			if (pin < 16)
-			{
-				config->gpio->inttype_00_15 &= ~(0x3 << (pin * 2));
-				config->gpio->inttype_00_15 |= (inttype << (pin * 2));
-			}
-			else
-			{
-				config->gpio->inttype_16_31 &= ~(0x3 << ((pin - 16) * 2));
-				config->gpio->inttype_16_31 |= (inttype << ((pin - 16) * 2));
-			}
-		}
-		config->gpio->inten |= BIT(pin);
+		sys_write32(sys_read32(config->base + GPIO_REG_INTTYPE_16_31) & ~(0x3 << (pin * 2)), config->base + GPIO_REG_INTTYPE_16_31);
+		sys_write32(sys_read32(config->base + GPIO_REG_INTTYPE_16_31) | (inttype << (pin * 2)), config->base + GPIO_REG_INTTYPE_16_31);
 	}
+
+	sys_write32(sys_read32(config->base + GPIO_REG_INTEN) | BIT(pin), config->base + GPIO_REG_INTEN);
 
 	return 0;
 }
@@ -310,7 +278,7 @@ static void gpio_puppy_isr(const struct device *dev)
 	struct gpio_puppy_data *data = dev->data;
 
 	/* Interrupts cleared automatically when intstatus register is read */
-	uint32_t int_status = config->gpio->intstatus;
+	uint32_t int_status = sys_read32(config->base + GPIO_REG_INTSTATUS);
 
 	gpio_fire_callbacks(&data->callbacks, dev, int_status);
 }
@@ -329,7 +297,6 @@ static DEVICE_API(gpio, gpio_puppy_driver_api) = {
 #define GPIO_PUPPY_INIT(idx)                                             \
 	static const struct gpio_puppy_config gpio_puppy_##idx##_config = {  \
 		.base = DT_INST_REG_ADDR(idx),                                   \
-		.gpio = (volatile struct gpio_puppy_t *)(DT_INST_REG_ADDR(idx)), \
 	};                                                                   \
                                                                          \
 	static struct gpio_puppy_data gpio_puppy_##idx##_data = {            \

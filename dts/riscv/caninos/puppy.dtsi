@@ -39,6 +39,7 @@
 		gpio0: gpio@1a101000 {
 			compatible = "caninos,puppy-gpio";
 			gpio-controller;
+			ngpios = <32>;
 			reg = <0x1a101000 0x1000>;
 			interrupts = <15>;
 			interrupt-parent = <&intc>;
