@@ -84,8 +84,11 @@ static bool spi_puppy_xfer(const struct device *dev)
 	size_t chunk_len_bytes = spi_context_max_continuous_chunk(ctx);
 	size_t len_bytes = MIN(chunk_len_bytes, SPI_PUPPY_MAX_BUFFER_SIZE);
 	
-	uint8_t *tx_buf = (ctx->tx_buf != NULL) ? ctx->tx_buf : &data->txbuf[0];
-	uint8_t *rx_buf = (ctx->rx_buf != NULL) ? ctx->rx_buf : &data->rxbuf[0];
+	const uint8_t *tx_buf = (ctx->tx_buf != NULL) ? 
+							 ctx->tx_buf : &data->txbuf[0];
+
+	uint8_t *rx_buf = (ctx->rx_buf != NULL) ?
+					   ctx->rx_buf : &data->rxbuf[0];
 	
 	uint32_t cmd_buf[8];
 	bool last = false;

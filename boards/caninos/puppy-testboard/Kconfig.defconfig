@@ -1,5 +1,0 @@
- 
-config HAS_FLASH_LOAD_OFFSET
-    bool
-    default y
-    depends on BOOTLOADER_MCUBOOT && SOC_PUPPY

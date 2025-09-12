@@ -1,4 +1,4 @@
-config SOC_PUPPY
+config SOC_PUPPY_V1
 	bool
 	select RISCV
 	select RISCV_PUPPY

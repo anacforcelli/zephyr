@@ -1,10 +1,9 @@
-#include <caninos/puppy.dtsi>
+#include <caninos/puppy_v1.dtsi>
 #include <mem.h>
-#include <zephyr/dt-bindings/gpio/gpio.h>
 
 / {
 	model = "puppy-testboard-v1";
-	compatible = "caninos,puppy-testboard";
+	compatible = "caninos,puppy-testboard-v1";
 
 	chosen {
 		mcuboot,ram-load-dev = &sram;
@@ -56,7 +55,6 @@
 	current-speed = <115200>;
 	parity = "none";
 };
-
 
 &spi0 {
 	status = "okay";

@@ -1,8 +1,4 @@
-if SOC_PUPPY
-
-config SOC
-	string
-	default "puppy"
+if SOC_PUPPY_V2
 
 config SYS_CLOCK_HW_CYCLES_PER_SEC
 	int
@@ -41,22 +37,11 @@ config NUM_IRQS
 	default 32
 
 config MP_MAX_NUM_CPUS
-        default 1
+    default 1
 
-#config ITCM_BASE_ADDRESS
-#	hex
-#	default	0x1c008000
-
-#config ITCM_SIZE
-#	hex
-#	default 0x8000
-
-#config DTCM_BASE_ADDRESS
-#	hex
-#	default 0x1c000000
-
-#config DTCM_SIZE
-#	hex
-#	default 0x8000
+config HAS_FLASH_LOAD_OFFSET
+    bool
+    default y
+    depends on BOOTLOADER_MCUBOOT
 
 endif # SOC_PUPPY
