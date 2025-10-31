@@ -15,7 +15,7 @@
 			device_type = "cpu";
 			status = "okay";
 			compatible = "riscv";
-			riscv,isa = "rv32imfc";
+			riscv,isa = "rv32imfc_zicsr";
 			reg = <0>;
 		};
 	};
@@ -24,15 +24,9 @@
 		#address-cells = <0x01>;
 		#size-cells = <0x01>;
 
-		bootram: bootram@1c004000 {
-			device_type = "memory";
-			reg = <0x1c004000 0xC000>;
-			status = "okay";
-		};
-
 		sram: sram@1c010000 {
 			device_type = "memory";
-			reg = <0x1c010000 0x70000>;
+			reg = <0x1c010000 0x40000>;
 			status="okay";
 		};
 
@@ -51,6 +45,13 @@
 			compatible = "caninos,puppy-event-unit";
 			interrupt-controller;
 			reg = <0x1a109000 0x1000>;
+		};
+
+		timer: timer@1a10b000 {
+			compatible = "caninos,puppy-timer";
+			reg = <0x1a10b000 0x1000>;
+			interrupts = <10>;
+			interrupt-parent = <&intc>;
 		};
 	};
 };

@@ -10,5 +10,8 @@ config SOC_PUPPY_V2
 	select ARCH_HAS_CUSTOM_CPU_IDLE
 	select ARCH_HAS_CUSTOM_CPU_ATOMIC_IDLE
 	select ATOMIC_OPERATIONS_C
-	imply XIP
+	#select SHARED_INTERRUPTS
+	#select FPU
+	#select CPU_HAS_FPU
+	#select FLOAT_HARD
 

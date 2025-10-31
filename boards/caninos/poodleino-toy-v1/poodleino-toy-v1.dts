@@ -12,12 +12,12 @@
 		zephyr,sram = &sram;
 		zephyr,flash = &flash0;
 		zephyr,console = &uart0;
-		zephyr,uart-mcumgr = &uart0;
     };
 
 	aliases {
 		led0 = &led0;
 		mcuboot-led0 = &led0;
+        mcuboot-button0 = &button0;
 		eeprom-0 = &flash0;
 	};
 
@@ -26,9 +26,18 @@
 
 		led0: led_0 {
 			gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
-			label = "LED0";
+			label = "led0";
 		};
 	};
+
+    buttons {
+        compatible = "gpio-keys";
+
+        button0: button_0 {
+            gpios = <&gpio0 9 0>; // D3
+            label = "button0";
+        };
+    };
 
     arduino_header: connector {
         compatible = "arduino-header-r3";
@@ -38,7 +47,7 @@
         gpio-map = /* A0 - A5 not connected */
             <6 0 &gpio0 8 0>,	/* D0, also TX */
             <7 0 &gpio0 7 0>,	/* D1, also RX */
-            <8 0 &gpio0 4 0>,	/* D2 */
+            <8 0 &gpio0 4 0>,	/* D2, CS0 */
             <9 0 &gpio0 9 0>,	/* D3 */
             <10 0 &gpio0 24 0>,	/* D4 */
             <11 0 &gpio0 10 0>,	/* D5 */
@@ -69,6 +78,12 @@
     parity = "none";
 };
 
+&uart1 {
+    status = "okay";
+    current-speed = <115200>;
+    parity = "none";
+};
+
 &spi0 {
     status = "okay";
 
@@ -85,23 +100,23 @@
             #address-cells = <1>;
 
             boot_partition: partition@0 {
-                reg = <0 0x10000>;
+                reg = <0 0x20000>;
                 label = "boot_partition";
                 read-only;
             };
 
-            slot0_partition: partition@10000 {
-                reg = <0x10000 0x40000>;
+            slot0_partition: partition@20000 {
+                reg = <0x20000 0x60000>;
                 label = "slot0";
             };
 
-            slot1_partition: partition@50000 {
-                reg = <0x50000 0x40000>;
+            slot1_partition: partition@80000 {
+                reg = <0x80000 0x60000>;
                 label = "slot1";
             };
 
-            user_sketch: partition@F0000 {
-                reg = <0xF0000 0xF0000>;
+            user_sketch: partition@e0000 {
+                reg = <0xe0000 0x10000>;
             };
         };
     };
