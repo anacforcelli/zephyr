@@ -1,10 +1,12 @@
 #ifndef __PUPPY_SOC_EVENT_H__
 #define __PUPPY_SOC_EVENT_H__
 
+#include <zephyr/sys/util.h>
+
 #ifndef _ASMLANGUAGE
 
 #define PULP_SOC_EU_ADDR 0x1A106000
-#define SOC_EU_EVENT 0x00
+#define SOC_EU_EVENT     0x00
 
 #define SOC_NB_EVENT_REGS 8
 
@@ -13,10 +15,10 @@
 #define SOC_CL_FIRST_MASK 0x24
 
 /* move defines to timer header */
-#define SOC_TIMER_SEL_HI 0x84
-#define SOC_TIMER_SEL_EVT_WIDTH 8
-#define SOC_TIMER_SEL_EVT_MASK ((~0U) >> (32 - SOC_TIMER_SEL_EVT_WIDTH))
-#define SOC_TIMER_SEL_EVT_SHIFT 0
+#define SOC_TIMER_SEL_HI           0x84
+#define SOC_TIMER_SEL_EVT_WIDTH    8
+#define SOC_TIMER_SEL_EVT_MASK     ((~0U) >> (32 - SOC_TIMER_SEL_EVT_WIDTH))
+#define SOC_TIMER_SEL_EVT_SHIFT    0
 #define SOC_TIMER_SEL_ENABLE_SHIFT 31
 
 static inline void soc_eu_eventMask_set(unsigned int reg, unsigned int value)
@@ -31,8 +33,7 @@ static inline unsigned int soc_eu_eventMask_get(unsigned int reg)
 
 static inline void soc_eu_eventMask_reset(unsigned int first_reg)
 {
-	for (int i = 0; i < SOC_NB_EVENT_REGS; i++)
-	{
+	for (int i = 0; i < SOC_NB_EVENT_REGS; i++) {
 		soc_eu_eventMask_set(first_reg + i * 4, 0xffffffff);
 	}
 }
@@ -93,8 +94,10 @@ static inline void soc_eu_genEventMask(unsigned int mask)
  */
 static inline void soc_eu_selEventTimer(unsigned int timer_id, unsigned int mask)
 {
-	sys_write32((sys_read32(PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4) & ~(SOC_TIMER_SEL_EVT_MASK << SOC_TIMER_SEL_EVT_SHIFT)) | (mask & SOC_TIMER_SEL_EVT_MASK),
-				PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4);
+	sys_write32((sys_read32(PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4) &
+		     ~(SOC_TIMER_SEL_EVT_MASK << SOC_TIMER_SEL_EVT_SHIFT)) |
+			    (mask & SOC_TIMER_SEL_EVT_MASK),
+		    PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4);
 }
 
 /** \brief Activation of the event forward to timer feature.
@@ -104,8 +107,10 @@ static inline void soc_eu_selEventTimer(unsigned int timer_id, unsigned int mask
  */
 static inline void soc_eu_setEnableEventTimer(unsigned int timer_id, unsigned int val)
 {
-	sys_write32((sys_read32(PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4) & ~(1 << SOC_TIMER_SEL_ENABLE_SHIFT)) | val,
-				PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4);
+	sys_write32((sys_read32(PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4) &
+		     ~(1 << SOC_TIMER_SEL_ENABLE_SHIFT)) |
+			    val,
+		    PULP_SOC_EU_ADDR + SOC_TIMER_SEL_HI + timer_id * 4);
 }
 
 int periph_get_event(int event);

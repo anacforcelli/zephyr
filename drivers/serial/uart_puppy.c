@@ -8,15 +8,13 @@
 #include "uart_puppy.h"
 
 #if CONFIG_UART_ASYNC_API
-struct uart_puppy_async_data
-{
+struct uart_puppy_async_data {
 	uart_callback_t cb;
 	void *user_data;
 };
 #endif
 
-struct uart_puppy_data
-{
+struct uart_puppy_data {
 	uint32_t base;
 	int id;
 	struct uart_config uart_config;
@@ -42,10 +40,11 @@ static int uart_puppy_setup(const struct device *dev)
 	uint32_t bit_length;
 	uint32_t parity_en;
 
-	if (baudrate > sys_clock_hw_cycles_per_sec())
+	if (baudrate > sys_clock_hw_cycles_per_sec()) {
 		return -ENOTSUP;
-	else
+	} else {
 		clk_div = (sys_clock_hw_cycles_per_sec() + baudrate / 2) / baudrate - 1;
+	}
 
 #if CONFIG_UART_ASYNC_API
 	polling_en = 0;
@@ -53,26 +52,30 @@ static int uart_puppy_setup(const struct device *dev)
 	polling_en = 1;
 #endif
 
-	if (config->parity == UART_CFG_PARITY_NONE)
+	if (config->parity == UART_CFG_PARITY_NONE) {
 		parity_en = 0;
-	else if (config->parity == UART_CFG_PARITY_EVEN)
+	} else if (config->parity == UART_CFG_PARITY_EVEN) {
 		parity_en = 1;
-	else
+	} else {
 		return -ENOTSUP;
+	}
 
-	if (config->stop_bits == UART_CFG_STOP_BITS_1)
+	if (config->stop_bits == UART_CFG_STOP_BITS_1) {
 		stop_bits = 0;
-	else if (config->stop_bits == UART_CFG_STOP_BITS_2)
+	} else if (config->stop_bits == UART_CFG_STOP_BITS_2) {
 		stop_bits = 1;
-	else
+	} else {
 		return -ENOTSUP;
+	}
 
-	if (config->data_bits == UART_CFG_DATA_BITS_9)
+	if (config->data_bits == UART_CFG_DATA_BITS_9) {
 		return -ENOTSUP;
-	else
+	} else {
 		bit_length = (config->data_bits) & 0x3;
+	}
 
-	setup = (clk_div << 16) | (rxtx_en << 8) | (polling_en << 4) | (stop_bits << 3) | (bit_length << 1) | parity_en;
+	setup = (clk_div << 16) | (rxtx_en << 8) | (polling_en << 4) | (stop_bits << 3) |
+		(bit_length << 1) | parity_en;
 
 	sys_write32(setup, base + UART_SETUP);
 
@@ -86,8 +89,9 @@ static int uart_puppy_poll_in(const struct device *dev, unsigned char *c)
 {
 	struct uart_puppy_data *data = dev->data;
 
-	if (!sys_read32(data->base + UART_VALID)) // Data not ready to read
+	if (!sys_read32(data->base + UART_VALID)) { // Data not ready to read
 		return -1;
+	}
 
 	*c = sys_read32(data->base + UART_DATA);
 	return 0;
@@ -96,12 +100,11 @@ static int uart_puppy_poll_in(const struct device *dev, unsigned char *c)
 #if CONFIG_UART_ASYNC_API
 
 static int uart_puppy_async_callback_set(const struct device *dev, uart_callback_t callback,
-										 void *user_data)
+					 void *user_data)
 {
 	struct uart_puppy_data *data = dev->data;
 
-	if (!callback)
-	{
+	if (!callback) {
 		return -EINVAL;
 	}
 
@@ -117,16 +120,21 @@ static int uart_puppy_async_callback_set(const struct device *dev, uart_callback
 }
 
 static int uart_puppy_async_tx(const struct device *dev, const uint8_t *buf, size_t len,
-							   int32_t timeout)
+			       int32_t timeout)
 {
 	struct uart_puppy_data *data = dev->data;
 
-	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_TX_OFFSET))
-	{
-		periph_wait_event(ARCHI_UDMA_UART_TX_EVT(data->id), 1);
+	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_TX_OFFSET)) {
+		if(data->id == 0)
+			periph_wait_event(ARCHI_UDMA_UART0_TX_EVT(0), 1);
+#ifdef CONFIG_SOC_PUPPY_V2
+		else if(data->id == 1)
+			periph_wait_event(ARCHI_UDMA_UART1_TX_EVT(0), 1);
 	}
+#endif
 
-	plp_udma_enqueue(data->base + UDMA_CHANNEL_TX_OFFSET, (uint32_t)buf, len, UDMA_CHANNEL_CFG_EN);
+	plp_udma_enqueue(data->base + UDMA_CHANNEL_TX_OFFSET, (uint32_t)buf, len,
+			 UDMA_CHANNEL_CFG_EN);
 
 	return 0;
 }
@@ -145,15 +153,19 @@ static void uart_puppy_clean_rx_fifo(const struct device *dev)
 }
 
 static int uart_puppy_async_rx_enable(const struct device *dev, uint8_t *buf, size_t len,
-									  int32_t timeout)
+				      int32_t timeout)
 {
 	struct uart_puppy_data *data = dev->data;
 
 	uint32_t irq_en;
 
-	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_RX_OFFSET))
-	{
-		periph_wait_event(ARCHI_UDMA_UART_RX_EVT(data->id), 1);
+	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_RX_OFFSET)) {
+		if(data->id == 0)
+			periph_wait_event(ARCHI_UDMA_UART0_RX_EVT(0), 1);
+#ifdef CONFIG_SOC_PUPPY_V2
+		else if(data->id == 1)
+			periph_wait_event(ARCHI_UDMA_UART1_RX_EVT(0), 1);
+#endif
 	}
 
 	uart_puppy_clean_rx_fifo(dev);
@@ -161,7 +173,8 @@ static int uart_puppy_async_rx_enable(const struct device *dev, uint8_t *buf, si
 	irq_en = sys_read32(data->base + UART_IRQEN) | UART_RXIRQEN;
 	sys_write32(data->base + UART_IRQEN, irq_en);
 
-	plp_udma_enqueue(data->base + UDMA_CHANNEL_RX_OFFSET, (uint32_t)buf, len, UDMA_CHANNEL_CFG_EN);
+	plp_udma_enqueue(data->base + UDMA_CHANNEL_RX_OFFSET, (uint32_t)buf, len,
+			 UDMA_CHANNEL_CFG_EN);
 
 	// implement timeout
 
@@ -193,11 +206,26 @@ static int uart_puppy_init(const struct device *dev)
 {
 	struct uart_puppy_data *data = dev->data;
 
+	uint32_t int_conf = plp_udma_evtin_get();
 	uint32_t cg_conf = plp_udma_cg_get();
-	plp_udma_cg_set(cg_conf | BIT(UDMA_UART_ID + data->id));
 
-	soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART_RX_EVT(data->id));
-	soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART_TX_EVT(data->id));
+	if(data->id == 0)
+	{
+		plp_udma_cg_set(cg_conf | BIT(UDMA_UART0_ID));
+
+		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART0_RX_EVT(0));
+		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART0_TX_EVT(0));
+		plp_udma_evtin_set(int_conf | ARCHI_UDMA_UART0_RX_EVT(0));
+	}
+#ifdef CONFIG_SOC_PUPPY_V2
+	else if (data->id == 1)
+	{
+		plp_udma_cg_set(cg_conf | BIT(UDMA_UART1_ID));
+
+		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART1_RX_EVT(0));
+		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART1_TX_EVT(0));
+	}
+#endif
 
 	return uart_puppy_setup(dev);
 }
@@ -205,32 +233,27 @@ static int uart_puppy_init(const struct device *dev)
 static DEVICE_API(uart, uart_puppy_driver_api) = {
 	.poll_in = uart_puppy_poll_in,
 #if CONFIG_UART_ASYNC_API
-	.poll_out = uart_puppy_poll_out, // Polling not available for Tx in Puppy, using async instead (see description up)
+	.poll_out = uart_puppy_poll_out, // Polling not available for Tx in Puppy, using async
+					 // instead (see description up)
 	.callback_set = uart_puppy_async_callback_set,
 	.tx = uart_puppy_async_tx,
 	.rx_enable = uart_puppy_async_rx_enable,
 #endif /* CONFIG_UART_ASYNC_API */
 };
 
-#define PUPPY_UART_INIT(idx)                                                        \
-                                                                                    \
-	static struct uart_puppy_data uart_puppy_##idx##_data = {                       \
-		.base = DT_INST_REG_ADDR(idx),                                              \
-		.id = DT_INST_PROP(idx, uart_id),                                           \
-		.uart_config = {                                                            \
-			.baudrate = DT_INST_PROP(idx, current_speed),                           \
-			.stop_bits = DT_INST_ENUM_IDX_OR(idx, stop_bits, UART_CFG_STOP_BITS_1), \
-			.data_bits = DT_INST_ENUM_IDX_OR(idx, data_bits, UART_CFG_DATA_BITS_8), \
-			.parity = DT_INST_ENUM_IDX_OR(idx, parity, UART_CFG_PARITY_NONE),       \
-		}};                                                                         \
-                                                                                    \
-	DEVICE_DT_INST_DEFINE(idx,                                                      \
-						  uart_puppy_init,                                          \
-						  NULL,                                                     \
-						  &uart_puppy_##idx##_data,                                 \
-						  NULL,                                                     \
-						  PRE_KERNEL_1,                                             \
-						  CONFIG_SERIAL_INIT_PRIORITY,                              \
-						  &uart_puppy_driver_api);
+#define PUPPY_UART_INIT(idx)                                                                       \
+                                                                                                   \
+	static struct uart_puppy_data uart_puppy_##idx##_data = {                                  \
+		.base = DT_INST_REG_ADDR(idx),                                                     \
+		.id = DT_INST_PROP(idx, uart_id),                                                  \
+		.uart_config = {                                                                   \
+			.baudrate = DT_INST_PROP(idx, current_speed),                              \
+			.stop_bits = DT_INST_ENUM_IDX_OR(idx, stop_bits, UART_CFG_STOP_BITS_1),    \
+			.data_bits = DT_INST_ENUM_IDX_OR(idx, data_bits, UART_CFG_DATA_BITS_8),    \
+			.parity = DT_INST_ENUM_IDX_OR(idx, parity, UART_CFG_PARITY_NONE),          \
+		}};                                                                                \
+                                                                                                   \
+	DEVICE_DT_INST_DEFINE(idx, uart_puppy_init, NULL, &uart_puppy_##idx##_data, NULL,          \
+			      PRE_KERNEL_1, CONFIG_SERIAL_INIT_PRIORITY, &uart_puppy_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(PUPPY_UART_INIT);
