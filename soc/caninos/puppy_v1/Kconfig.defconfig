@@ -10,23 +10,11 @@ config SYS_CLOCK_TICKS_PER_SEC
 
 config RISCV_SOC_CONTEXT_SAVE
 	bool
-	default y
-
-config RISCV_SOC_INTERRUPT_INIT
-	bool
-	default y
+	default yx
 
 config RISCV_HAS_CPU_IDLE
 	bool
 	default y
-
-config RV_BOOT_HART
-	int
-	default 0
-
-config RISCV_HART_MASK
-	int
-	default 1
 
 config INCLUDE_RESET_VECTOR
 	bool
@@ -37,11 +25,11 @@ config NUM_IRQS
 	default 32
 
 config MP_MAX_NUM_CPUS
-        default 1
+    default 1
 
 config HAS_FLASH_LOAD_OFFSET
     bool
     default y
     depends on BOOTLOADER_MCUBOOT
-	
+
 endif # SOC_PUPPY

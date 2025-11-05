@@ -5,15 +5,19 @@
 #include "../../../arch/riscv/core/asm_macros.inc"
 
 /* exports */
-GTEXT(__puppy_init)
+GTEXT(__start)
 
 /* imports */
 GTEXT(z_prep_c)
+GTEXT(_isr_wrapper)
 
-/* use ABI name of registers for the sake of simplicity */
+.option norvc;
 
-SECTION_FUNC(TEXT, __puppy_init)
-
+SECTION_FUNC(vectors, __start)
+	/* Set mtvec to point at ivt. */
+	la t0, ivt
+	csrw mtvec, t0
+	/* Call into Zephyr initialization. */
 #ifdef CONFIG_FPU
 	/*
 	 * Enable floating-point.
@@ -37,10 +41,9 @@ SECTION_FUNC(TEXT, __puppy_init)
 
 	/* Populate z_interrupt_stacks with 0xaaaaaaaa */
 	li t2, 0xaaaaaaaa
-aa_loop:
-	sw t2, 0x00(t0)
+1:	sw t2, 0x00(t0)
 	addi t0, t0, 4
-	blt t0, t1, aa_loop
+	blt t0, t1, 1b
 #endif /* CONFIG_INIT_STACKS */
 
 	/*
@@ -60,4 +63,18 @@ aa_loop:
 	 * and then enters kernel z_cstart
 	 */
 	call z_prep_c
+	j .
+
+	.balign 256
+ivt:
+	.rept 32
+	jal zero, _isr_wrapper
+	.endr
+
+
+
+
+
+
+
 

@@ -162,8 +162,10 @@ typedef enum {
 
 /*** UDMA EVENT IDS ***/
 // id : number relative to number of same peripheral type (except ) (NOT UDMA ID)
-#define ARCHI_UDMA_UART0_RX_EVT(id) ((UDMA_UART0_ID + id) * 4)
-#define ARCHI_UDMA_UART0_TX_EVT(id) (ARCHI_UDMA_UART0_RX_EVT(id) + 1)
+#define ARCHI_UDMA_UART0_RX_EVT(id)     ((UDMA_UART0_ID + id) * 4)
+#define ARCHI_UDMA_UART0_TX_EVT(id)     (ARCHI_UDMA_UART0_RX_EVT(id) + 1)
+#define ARCHI_UDMA_UART0_EOT_EVT(id)    (ARCHI_UDMA_UART0_RX_EVT(id) + 2)
+#define ARCHI_UDMA_UART0_RX_DAT_EVT(id) (ARCHI_UDMA_UART0_RX_EVT(id) + 3)
 
 #define ARCHI_UDMA_SPIM_RX_EVT(id)  ((UDMA_SPI0_ID + id) * 4)
 #define ARCHI_UDMA_SPIM_TX_EVT(id)  (ARCHI_UDMA_SPIM_RX_EVT(id) + 1)

@@ -6,7 +6,6 @@
 #define __PUPPY_SOC_H_
 
 /* CSR Registers */
-#define PULP_MESTATUS 0x7C0 /* Machine Exception Status Register */
 #define PULP_LPSTART0 0x7B0 /* Hardware Loop 0 Start Register */
 #define PULP_LPEND0   0x7B1 /* Hardware Loop 0 End Register */
 #define PULP_LPCOUNT0 0x7B2 /* Hardware Loop 0 Count Register */
@@ -21,46 +20,43 @@
 #define PULP_GPIO_IRQ      15 /* GPIO event */
 #define PULP_SOC_EVENT_IRQ 26 /* SOC event generator */
 
-/* min value to consider as IRQ in MCAUSE register */
-#define PULP_MIN_IRQ uDMA_IRQ
-
-/* Exception numbers */
-#define PULP_ECALL_EXP 11 /* ECALL Instruction */
-
-/*
- * SOC-specific MSTATUS related info
- */
-/* MSTATUS register to save/restore upon interrupt/exception/context switch */
-#define SOC_MSTATUS_REG PULP_MESTATUS
-
-#define SOC_MSTATUS_IEN (1 << 3) /* Machine Interrupt Enable bit */
-
-/*
- * Default MSTATUS register value to restore from stack
- * upon scheduling a thread for the first time
- */
-#define SOC_MSTATUS_DEF_RESTORE SOC_MSTATUS_IEN
-
-/* SOC-specific MCAUSE bitfields */
-#define SOC_MCAUSE_EXP_MASK  0x1F           /* Exception code Mask */
-#define SOC_MCAUSE_ECALL_EXP PULP_ECALL_EXP /* ECALL exception number */
-
 /* PAD configuration */
 #include "soc_pad.h"
 
 /* IRQ configuration */
-#define PULP_IRQ_BASE 0x1A109000
-
-#define PULP_IRQ_MASK_ADDR    (PULP_IRQ_BASE + 0x00) /* Mask (interrupt enable) */
-#define PULP_IRQ_INT_ADDR     (PULP_IRQ_BASE + 0x0C) /* Pending interrupts */
-#define PULP_IRQ_INT_CLR_ADDR (PULP_IRQ_BASE + 0x14) /* Pending interrupts */
-#define PULP_IRQ_ACK_ADDR     (PULP_IRQ_BASE + 0x18)
-#define PULP_IRQ_FIFO_DATA    (PULP_IRQ_BASE + 0x24)
+/* IRQ Configuration */
+#define PULP_IRQ_BASE_ADDR         (0x1A109800)
+/* This register contains the MASK (read only) */
+#define PULP_IRQ_MSK_GET_REG       (PULP_IRQ_BASE_ADDR + 0x00)
+/* This register sets bits on MASK register (write only) */
+#define PULP_IRQ_MSK_SET_REG       (PULP_IRQ_BASE_ADDR + 0x04)
+/* This register clears bits on MASK register (write only) */
+#define PULP_IRQ_MSK_CLR_REG       (PULP_IRQ_BASE_ADDR + 0x08)
+#define PULP_IRQ_STATUS_GET_REG    (PULP_IRQ_BASE_ADDR + 0x0C)
+#define PULP_IRQ_STATUS_SET_REG    (PULP_IRQ_BASE_ADDR + 0x10)
+#define PULP_IRQ_STATUS_CLR_REG    (PULP_IRQ_BASE_ADDR + 0x14)
+#define PULP_IRQ_ACK_GET_REG       (PULP_IRQ_BASE_ADDR + 0x18)
+#define PULP_IRQ_ACK_SET_REG       (PULP_IRQ_BASE_ADDR + 0x1C)
+#define PULP_IRQ_ACK_CLR_REG       (PULP_IRQ_BASE_ADDR + 0x20)
+#define PULP_IRQ_FIFO_DATA_GET_REG (PULP_IRQ_BASE_ADDR + 0x24)
 
 /* uDMA configuration */
 #include "soc_udma.h"
 
 /* Event Unit */
+
+#define PULP_SOC_EU_ADDR 0x1A106000
+
+#define PULP_EU_SW_EVENT_REG (PULP_EU_BASE_ADDR + 0x00)
+#define PULP_EU_FC_MASK0_REG (PULP_EU_BASE_ADDR + 0x04)
+#define PULP_EU_FC_MASK1_REG (PULP_EU_BASE_ADDR + 0x08)
+#define PULP_EU_FC_MASK2_REG (PULP_EU_BASE_ADDR + 0x0C)
+#define PULP_EU_FC_MASK3_REG (PULP_EU_BASE_ADDR + 0x10)
+#define PULP_EU_FC_MASK4_REG (PULP_EU_BASE_ADDR + 0x14)
+#define PULP_EU_FC_MASK5_REG (PULP_EU_BASE_ADDR + 0x18)
+#define PULP_EU_FC_MASK6_REG (PULP_EU_BASE_ADDR + 0x1C)
+#define PULP_EU_FC_MASK7_REG (PULP_EU_BASE_ADDR + 0x20)
+
 #include "soc_event.h"
 
 #ifndef _ASMLANGUAGE
@@ -70,19 +66,14 @@
 #define PULP_REG(x) (*((volatile uint32_t *)(x)))
 
 /* Interrupt Registers */
-#define PULP_IRQ_MASK PULP_REG(PULP_IRQ_MASK_ADDR)
+#define PULP_IRQ_MASK PULP_REG(PULP_IRQ_MSK_GET_REG)
 #define PULP_IRQ_MASK_SET                                                                          \
-	PULP_REG(PULP_IRQ_MASK_ADDR + 0x04) /* This register sets bits on MASK register */
+	PULP_REG(PULP_IRQ_MSK_SET_REG) /* This register sets bits on MASK register */
 #define PULP_IRQ_MASK_CLR                                                                          \
-	PULP_REG(PULP_IRQ_MASK_ADDR + 0x08) /* This register clears bits on MASK register */
-#define PULP_IRQ_INT PULP_REG(PULP_IRQ_INT_ADDR)
-#define PULP_IRQ_INT_SET                                                                           \
-	PULP_REG(PULP_IRQ_INT_ADDR + 0x04) /* This register sets bits on INT register */
-#define PULP_IRQ_INT_CLR                                                                           \
-	PULP_REG(PULP_IRQ_INT_ADDR + 0x08) /* This register clears bits on INT register */
-#define PULP_IRQ_ACK     PULP_REG(PULP_IRQ_ACK_ADDR)
-#define PULP_IRQ_ACK_SET PULP_REG(PULP_IRQ_ACK_ADDR + 0x04)
-#define PULP_IRQ_ACK_CLR PULP_REG(PULP_IRQ_ACK_ADDR + 0x08)
+	PULP_REG(PULP_IRQ_MSK_CLR_REG) /* This register clears bits on MASK register */
+#define PULP_IRQ_ACK     PULP_REG(PULP_IRQ_ACK_GET_REG)
+#define PULP_IRQ_ACK_SET PULP_REG(PULP_IRQ_ACK_SET_REG)
+#define PULP_IRQ_ACK_CLR PULP_REG(PULP_IRQ_ACK_CLR_REG)
 
 /* PAD MUX register */
 #define PULP_PADMUX(group) PULP_REG(PULP_PAD_BASE + group * 0x4)

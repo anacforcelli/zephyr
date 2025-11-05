@@ -7,10 +7,8 @@ zephyr_compile_options_ifndef(
 
 zephyr_sources(
   init.S
-  vector.S
   soc_irq.S
   puppy_irq.c
-  puppy_idle.c
   )
 
 set(output ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME})

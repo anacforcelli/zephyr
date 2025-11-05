@@ -12,21 +12,9 @@ config RISCV_SOC_CONTEXT_SAVE
 	bool
 	default y
 
-config RISCV_SOC_INTERRUPT_INIT
-	bool
-	default y
-
 config RISCV_HAS_CPU_IDLE
 	bool
 	default y
-
-config RV_BOOT_HART
-	int
-	default 0
-
-config RISCV_HART_MASK
-	int
-	default 1
 
 config INCLUDE_RESET_VECTOR
 	bool

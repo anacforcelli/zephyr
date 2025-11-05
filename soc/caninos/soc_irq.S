@@ -7,9 +7,7 @@
 /* exports */
 GTEXT(__soc_save_context)
 GTEXT(__soc_restore_context)
-GTEXT(__soc_is_irq)
 GTEXT(__soc_handle_irq)
-GTEXT(__soc_irq_unlock)
 
 /* Use ABI name of registers for the sake of simplicity */
 
@@ -67,37 +65,15 @@ SECTION_FUNC(exception.other, __soc_restore_context)
  *
  * The Puppy core has:
  * 1) an CLEAR register for the pending IRQ number upon an interrupt at address
- *    PULP_IRQ_INT_CLR_ADDR
+ *    PULP_IRQ_ACK_CLR_REG
  *
  * Exception number is given as parameter via register a0.
  */
 SECTION_FUNC(exception.other, __soc_handle_irq)
 	/* Clear exception number from the Interrupt pending register */
-	li t1, PULP_IRQ_INT_CLR_ADDR
+	li t1, PULP_IRQ_ACK_CLR_REG
 	li t2, 1
 	sll t3, t2, a0
 	sw t3, 0x00(t1)
+	ret
 
-	/* Return */
-	jalr x0, ra
-
-
-/*
- * SOC-specific function to determine if the exception is the result of a
- * an interrupt or an exception
- * return 1 (interrupt) or 0 (exception)
- */
-SECTION_FUNC(exception.other, __soc_is_irq)
-	/* Get exception number from the mcause CSR register. */
-	csrr t0, mcause
-	andi t0, t0, SOC_MCAUSE_EXP_MASK
-
-	/* if IRQ number < PULP_MIN_IRQ, not interrupt */
-	li t1, PULP_MIN_IRQ
-	addi a0, x0, 0
-	blt t0, t1, not_interrupt
-	addi a0, a0, 1
-
-not_interrupt:
-	/* return */
-	jalr x0, ra
