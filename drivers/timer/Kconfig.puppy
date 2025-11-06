@@ -1,5 +1,0 @@
-
-config PUPPY_TIMER
-    bool "Puppy timer driver"
-    default y
-    depends on SOC_SERIES_PUPPY

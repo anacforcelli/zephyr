@@ -1,6 +1,5 @@
 #define DT_DRV_COMPAT caninos_puppy_uart
 
-#include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -17,11 +16,33 @@ struct uart_puppy_async_data {
 struct uart_puppy_data {
 	uint32_t base;
 	int id;
+	struct k_sem tx_lock;
+	struct k_sem rx_lock;
 	struct uart_config uart_config;
 #if CONFIG_UART_ASYNC_API
 	struct uart_puppy_async_data async;
 #endif
 };
+
+int tx_evt(struct device *dev, int event_num)
+{
+	struct uart_puppy_data *data = dev->data;
+	if (event_num == ARCHI_UDMA_UART0_TX_EVT(0) || event_num == ARCHI_UDMA_UART1_TX_EVT(0)) {
+		k_sem_give(&data->tx_lock);
+		return 0;
+	}
+	return -EINVAL;
+}
+
+int rx_evt(struct device *dev, int event_num)
+{
+	struct uart_puppy_data *data = dev->data;
+	if (event_num == ARCHI_UDMA_UART0_RX_EVT(0) || event_num == ARCHI_UDMA_UART1_RX_EVT(0)) {
+		k_sem_give(&data->rx_lock);
+		return 0;
+	}
+	return -EINVAL;
+}
 
 static int uart_puppy_setup(const struct device *dev)
 {
@@ -124,14 +145,10 @@ static int uart_puppy_async_tx(const struct device *dev, const uint8_t *buf, siz
 {
 	struct uart_puppy_data *data = dev->data;
 
-	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_TX_OFFSET)) {
-		if(data->id == 0)
-			periph_wait_event(ARCHI_UDMA_UART0_TX_EVT(0), 1);
-#ifdef CONFIG_SOC_PUPPY_V2
-		else if(data->id == 1)
-			periph_wait_event(ARCHI_UDMA_UART1_TX_EVT(0), 1);
-	}
-#endif
+	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_TX_OFFSET))
+		;
+
+	k_sem_take(&data->tx_lock, K_FOREVER);
 
 	plp_udma_enqueue(data->base + UDMA_CHANNEL_TX_OFFSET, (uint32_t)buf, len,
 			 UDMA_CHANNEL_CFG_EN);
@@ -159,14 +176,9 @@ static int uart_puppy_async_rx_enable(const struct device *dev, uint8_t *buf, si
 
 	uint32_t irq_en;
 
-	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_RX_OFFSET)) {
-		if(data->id == 0)
-			periph_wait_event(ARCHI_UDMA_UART0_RX_EVT(0), 1);
-#ifdef CONFIG_SOC_PUPPY_V2
-		else if(data->id == 1)
-			periph_wait_event(ARCHI_UDMA_UART1_RX_EVT(0), 1);
-#endif
-	}
+	while (!plp_udma_canEnqueue(data->base + UDMA_CHANNEL_RX_OFFSET))
+		;
+	k_sem_take(&data->rx_lock, K_FOREVER);
 
 	uart_puppy_clean_rx_fifo(dev);
 
@@ -206,24 +218,36 @@ static int uart_puppy_init(const struct device *dev)
 {
 	struct uart_puppy_data *data = dev->data;
 
-	uint32_t int_conf = plp_udma_evtin_get();
 	uint32_t cg_conf = plp_udma_cg_get();
 
-	if(data->id == 0)
-	{
+	k_sem_init(&data->tx_lock, 1, 1);
+	k_sem_init(&data->rx_lock, 1, 1);
+
+	if (data->id == 0) {
 		plp_udma_cg_set(cg_conf | BIT(UDMA_UART0_ID));
 
-		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART0_RX_EVT(0));
-		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART0_TX_EVT(0));
-		plp_udma_evtin_set(int_conf | ARCHI_UDMA_UART0_RX_EVT(0));
+		puppy_event_set(ARCHI_UDMA_UART0_TX_EVT(0));
+		puppy_event_set(ARCHI_UDMA_UART0_RX_EVT(0));
+
+		event_callback_s tx_callback = {.dev = dev, .callback = (event_callback_t)&tx_evt};
+		event_callback_s rx_callback = {.dev = dev, .callback = (event_callback_t)&rx_evt};
+
+		puppy_event_register_callback(ARCHI_UDMA_UART0_TX_EVT(0), &tx_callback);
+		puppy_event_register_callback(ARCHI_UDMA_UART0_RX_EVT(0), &rx_callback);
 	}
+
 #ifdef CONFIG_SOC_PUPPY_V2
-	else if (data->id == 1)
-	{
+	else if (data->id == 1) {
 		plp_udma_cg_set(cg_conf | BIT(UDMA_UART1_ID));
 
-		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART1_RX_EVT(0));
-		soc_eu_fcEventMask_setEvent(ARCHI_UDMA_UART1_TX_EVT(0));
+		puppy_event_set(ARCHI_UDMA_UART1_TX_EVT(0));
+		puppy_event_set(ARCHI_UDMA_UART1_RX_EVT(0));
+
+		event_callback_s tx_callback = {.dev = dev, .callback = (event_callback_t)&tx_evt};
+		event_callback_s rx_callback = {.dev = dev, .callback = (event_callback_t)&rx_evt};
+
+		puppy_event_register_callback(ARCHI_UDMA_UART1_TX_EVT(0), &tx_callback);
+		puppy_event_register_callback(ARCHI_UDMA_UART1_RX_EVT(0), &rx_callback);
 	}
 #endif
 
