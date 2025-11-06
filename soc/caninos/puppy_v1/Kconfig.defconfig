@@ -6,11 +6,11 @@ config SYS_CLOCK_HW_CYCLES_PER_SEC
 
 config SYS_CLOCK_TICKS_PER_SEC
 	int
-	default 31250
+	default 80000
 
 config RISCV_SOC_CONTEXT_SAVE
 	bool
-	default yx
+	default y
 
 config RISCV_HAS_CPU_IDLE
 	bool
@@ -31,5 +31,9 @@ config HAS_FLASH_LOAD_OFFSET
     bool
     default y
     depends on BOOTLOADER_MCUBOOT
+
+config TIMER_HAS_64BIT_CYCLE_COUNTER
+	bool
+	default y
 
 endif # SOC_PUPPY

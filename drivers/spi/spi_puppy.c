@@ -187,10 +187,6 @@ static int spi_puppy_init(const struct device *dev)
 		return ret;
 	}
 
-	soc_eu_fcEventMask_setEvent(ARCHI_UDMA_SPIM_RX_EVT(data->id));
-	soc_eu_fcEventMask_setEvent(ARCHI_UDMA_SPIM_TX_EVT(data->id));
-	soc_eu_fcEventMask_setEvent(ARCHI_UDMA_SPIM_EOT_EVT(data->id));
-
 	spi_context_unlock_unconditionally(&data->ctx);
 	return 0;
 }

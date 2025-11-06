@@ -20,12 +20,32 @@
 #define PULP_GPIO_IRQ      15 /* GPIO event */
 #define PULP_SOC_EVENT_IRQ 26 /* SOC event generator */
 
+#define PULP_APB_TIMER_BASE_ADDR (0x1A10B000)
+
 /* PAD configuration */
 #include "soc_pad.h"
 
-/* IRQ configuration */
-/* IRQ Configuration */
-#define PULP_IRQ_BASE_ADDR         (0x1A109800)
+/* PAD MUX register */
+#define PULP_PADMUX(group) PULP_REG(PULP_PAD_BASE + group * 0x4)
+
+#define PULP_PAD_SPI  0
+#define PULP_PAD_GPIO 1
+#define PULP_PAD_MASK 1
+
+/* PAD CFG register address */
+#define PULP_PADCFG_REG(pad) PULP_REG(PULP_PAD_CFG_BASE + (pad / 4) * 0x4)
+
+/* uDMA configuration */
+#include "soc_udma.h"
+
+/* Fabric Controller Event Configuration */
+#include "soc_event.h"
+
+/* Register Access MACRO */
+#define PULP_REG(x) (*((volatile uint32_t *)(x)))
+
+/* Interrupt Registers */
+#define PULP_IRQ_BASE_ADDR         (0x1A109000)
 /* This register contains the MASK (read only) */
 #define PULP_IRQ_MSK_GET_REG       (PULP_IRQ_BASE_ADDR + 0x00)
 /* This register sets bits on MASK register (write only) */
@@ -40,32 +60,8 @@
 #define PULP_IRQ_ACK_CLR_REG       (PULP_IRQ_BASE_ADDR + 0x20)
 #define PULP_IRQ_FIFO_DATA_GET_REG (PULP_IRQ_BASE_ADDR + 0x24)
 
-/* uDMA configuration */
-#include "soc_udma.h"
-
-/* Event Unit */
-
-#define PULP_SOC_EU_ADDR 0x1A106000
-
-#define PULP_EU_SW_EVENT_REG (PULP_EU_BASE_ADDR + 0x00)
-#define PULP_EU_FC_MASK0_REG (PULP_EU_BASE_ADDR + 0x04)
-#define PULP_EU_FC_MASK1_REG (PULP_EU_BASE_ADDR + 0x08)
-#define PULP_EU_FC_MASK2_REG (PULP_EU_BASE_ADDR + 0x0C)
-#define PULP_EU_FC_MASK3_REG (PULP_EU_BASE_ADDR + 0x10)
-#define PULP_EU_FC_MASK4_REG (PULP_EU_BASE_ADDR + 0x14)
-#define PULP_EU_FC_MASK5_REG (PULP_EU_BASE_ADDR + 0x18)
-#define PULP_EU_FC_MASK6_REG (PULP_EU_BASE_ADDR + 0x1C)
-#define PULP_EU_FC_MASK7_REG (PULP_EU_BASE_ADDR + 0x20)
-
-#include "soc_event.h"
-
-#ifndef _ASMLANGUAGE
 #include <zephyr/irq.h>
 
-/* Register Access MACRO */
-#define PULP_REG(x) (*((volatile uint32_t *)(x)))
-
-/* Interrupt Registers */
 #define PULP_IRQ_MASK PULP_REG(PULP_IRQ_MSK_GET_REG)
 #define PULP_IRQ_MASK_SET                                                                          \
 	PULP_REG(PULP_IRQ_MSK_SET_REG) /* This register sets bits on MASK register */
@@ -75,20 +71,8 @@
 #define PULP_IRQ_ACK_SET PULP_REG(PULP_IRQ_ACK_SET_REG)
 #define PULP_IRQ_ACK_CLR PULP_REG(PULP_IRQ_ACK_CLR_REG)
 
-/* PAD MUX register */
-#define PULP_PADMUX(group) PULP_REG(PULP_PAD_BASE + group * 0x4)
-
-#define PULP_PAD_SPI  0
-#define PULP_PAD_GPIO 1
-#define PULP_PAD_MASK 1
-
-/* PAD CFG register address */
-#define PULP_PADCFG_REG(pad) PULP_REG(PULP_PAD_CFG_BASE + (pad / 4) * 0x4)
-
 #if defined(CONFIG_RISCV_SOC_INTERRUPT_INIT)
 void soc_interrupt_init(void);
 #endif
-
-#endif /* !_ASMLANGUAGE */
 
 #endif /* __PUPPY_SOC_H_ */

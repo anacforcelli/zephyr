@@ -1,8 +1,0 @@
-# Kconfig.puppy - puppy IRQ/Event configuration option
-
-config IRQ_PUPPY
-	bool "Puppy IRQ/Event controller driver"
-	default y
-	depends on DT_HAS_CANINOS_PUPPY_EVENT_UNIT_ENABLED
-	help
-	  Enable driver for the Puppy IRQ/Event Unit controller.

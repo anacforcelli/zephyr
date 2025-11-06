@@ -9,6 +9,8 @@ zephyr_sources(
   init.S
   soc_irq.S
   puppy_irq.c
+  puppy_timer.c
+  puppy_event.c
   )
 
 set(output ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME})

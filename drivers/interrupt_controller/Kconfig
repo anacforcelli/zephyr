@@ -92,8 +92,6 @@ source "drivers/interrupt_controller/Kconfig.clic"
 
 source "drivers/interrupt_controller/Kconfig.gd32_exti"
 
-source "drivers/interrupt_controller/Kconfig.puppy"
-
 source "drivers/interrupt_controller/Kconfig.plic"
 
 source "drivers/interrupt_controller/Kconfig.nxp_s32"
