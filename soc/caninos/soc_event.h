@@ -1,12 +1,6 @@
 #ifndef __PUPPY_SOC_EVENT_H__
 #define __PUPPY_SOC_EVENT_H__
 
-#ifndef _ASMLANGUAGE
-
-#include <zephyr/device.h>
-
-/* Event Unit */
-
 #define PULP_SOC_EU_ADDR 0x1A106000
 
 #define PULP_EU_SW_EVENT_REG (PULP_SOC_EU_ADDR + 0x00)
@@ -20,31 +14,21 @@
 #define PULP_EU_FC_MASK7_REG (PULP_SOC_EU_ADDR + 0x20)
 
 #define SOC_NB_EVENT_REGS 8
-
 #define SOC_MAX_NUM_EVENT_CALLBACKS 32
 
-/* move defines to timer header */
-#define SOC_TIMER_SEL_HI           0x84
-#define SOC_TIMER_SEL_EVT_WIDTH    8
-#define SOC_TIMER_SEL_EVT_MASK     ((~0U) >> (32 - SOC_TIMER_SEL_EVT_WIDTH))
-#define SOC_TIMER_SEL_EVT_SHIFT    0
-#define SOC_TIMER_SEL_ENABLE_SHIFT 31
+#ifndef _ASMLANGUAGE
 
-/* Each in-driver Event Callback receives the event number of the event fired */
-typedef int (*event_callback_t)(const struct device *dev, int event_num);
+typedef void (*event_callback_t)(unsigned int event_num, void *userdata);
 
-typedef struct {
-	const struct device *dev;
-	event_callback_t callback;
-} event_callback_s;
+extern int puppy_event_register_callback(event_callback_t callback, void *userdata);
 
-extern int puppy_event_register_callback(int event_num, event_callback_s *callback);
+extern int puppy_event_unregister_callback(event_callback_t callback, void* userdata);
 
-extern void puppy_event_clr_callback(int event_num, event_callback_s *callback);
+extern int puppy_event_is_enabled(unsigned int event_num);
 
-extern void puppy_event_mask(int event_num);
+extern int puppy_event_disable(unsigned int event_num);
 
-extern void puppy_event_set(int event_num);
+extern int puppy_event_enable(unsigned int event_num);
 
 #endif // _ASMLANGUAGE
 #endif // __PUPPY_SOC_EVENT_H__

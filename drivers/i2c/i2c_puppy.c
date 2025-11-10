@@ -20,16 +20,14 @@ struct i2c_puppy_config {
 	int scl_pin;
 };
 
-int eot_event(struct device *dev, int index)
+void eot_event(unsigned int event_num, void *dev_ptr)
 {
+	const struct device* dev = (struct device*)dev_ptr;
 	const struct i2c_puppy_config *config = dev->config;
 	struct i2c_puppy_data *data = dev->data;
-	if (index != ARCHI_UDMA_I2C_EOT_EVT(config->id)) {
-		return -EINVAL;
-	} else {
+
+	if (event_num == ARCHI_UDMA_I2C_EOT_EVT(config->id))
 		k_sem_give(&data->lock);
-	}
-	return 0;
 }
 
 static uint16_t i2c_puppy_get_div(int bus_freq)
@@ -247,9 +245,8 @@ static int i2c_puppy_init(const struct device *dev)
 		config_pad_cfg(config->scl_pin, 0xfe);
 	}
 
-	event_callback_s eot_callback = {.dev = dev, .callback = (event_callback_t)&eot_event};
-	puppy_event_register_callback(ARCHI_UDMA_I2C_EOT_EVT(config->id), &eot_callback);
-	puppy_event_set(ARCHI_UDMA_I2C_EOT_EVT(config->id));
+	puppy_event_register_callback(&eot_event, (void*)dev);
+	puppy_event_enable(ARCHI_UDMA_I2C_EOT_EVT(config->id));
 
 	return 0;
 }

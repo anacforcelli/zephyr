@@ -24,24 +24,22 @@ struct uart_puppy_data {
 #endif
 };
 
-int tx_evt(struct device *dev, int event_num)
+void tx_evt(unsigned int event_num, void *dev_ptr)
 {
+	const struct device* dev = (struct device*)dev_ptr;
 	struct uart_puppy_data *data = dev->data;
-	if (event_num == ARCHI_UDMA_UART0_TX_EVT(0) || event_num == ARCHI_UDMA_UART1_TX_EVT(0)) {
+
+	if (event_num == ARCHI_UDMA_UART0_TX_EVT(0) || event_num == ARCHI_UDMA_UART1_TX_EVT(0))
 		k_sem_give(&data->tx_lock);
-		return 0;
-	}
-	return -EINVAL;
 }
 
-int rx_evt(struct device *dev, int event_num)
+void rx_evt(unsigned int event_num, void *dev_ptr)
 {
+	const struct device* dev = (struct device*)dev_ptr;
 	struct uart_puppy_data *data = dev->data;
-	if (event_num == ARCHI_UDMA_UART0_RX_EVT(0) || event_num == ARCHI_UDMA_UART1_RX_EVT(0)) {
+
+	if (event_num == ARCHI_UDMA_UART0_RX_EVT(0) || event_num == ARCHI_UDMA_UART1_RX_EVT(0))
 		k_sem_give(&data->rx_lock);
-		return 0;
-	}
-	return -EINVAL;
 }
 
 static int uart_puppy_setup(const struct device *dev)
@@ -226,28 +224,22 @@ static int uart_puppy_init(const struct device *dev)
 	if (data->id == 0) {
 		plp_udma_cg_set(cg_conf | BIT(UDMA_UART0_ID));
 
-		puppy_event_set(ARCHI_UDMA_UART0_TX_EVT(0));
-		puppy_event_set(ARCHI_UDMA_UART0_RX_EVT(0));
+		puppy_event_enable(ARCHI_UDMA_UART0_TX_EVT(0));
+		puppy_event_enable(ARCHI_UDMA_UART0_RX_EVT(0));
 
-		event_callback_s tx_callback = {.dev = dev, .callback = (event_callback_t)&tx_evt};
-		event_callback_s rx_callback = {.dev = dev, .callback = (event_callback_t)&rx_evt};
-
-		puppy_event_register_callback(ARCHI_UDMA_UART0_TX_EVT(0), &tx_callback);
-		puppy_event_register_callback(ARCHI_UDMA_UART0_RX_EVT(0), &rx_callback);
+		puppy_event_register_callback((event_callback_t)&tx_evt, (void*)dev);
+		puppy_event_register_callback((event_callback_t)&rx_evt, (void*)dev);
 	}
 
 #ifdef CONFIG_SOC_PUPPY_V2
 	else if (data->id == 1) {
 		plp_udma_cg_set(cg_conf | BIT(UDMA_UART1_ID));
 
-		puppy_event_set(ARCHI_UDMA_UART1_TX_EVT(0));
-		puppy_event_set(ARCHI_UDMA_UART1_RX_EVT(0));
+		puppy_event_enable(ARCHI_UDMA_UART1_TX_EVT(0));
+		puppy_event_enable(ARCHI_UDMA_UART1_RX_EVT(0));
 
-		event_callback_s tx_callback = {.dev = dev, .callback = (event_callback_t)&tx_evt};
-		event_callback_s rx_callback = {.dev = dev, .callback = (event_callback_t)&rx_evt};
-
-		puppy_event_register_callback(ARCHI_UDMA_UART1_TX_EVT(0), &tx_callback);
-		puppy_event_register_callback(ARCHI_UDMA_UART1_RX_EVT(0), &rx_callback);
+		puppy_event_register_callback((event_callback_t)&tx_evt, (void*)dev);
+		puppy_event_register_callback((event_callback_t)&rx_evt, (void*)dev);
 	}
 #endif
 
