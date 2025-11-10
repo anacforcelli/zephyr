@@ -11,7 +11,7 @@ static volatile uint32_t __soc_event_status[SOC_NB_EVENT_REGS];
 void puppy_event_irq_handler(void *unused)
 {
 	ARG_UNUSED(unused);
-	uint32_t event_id = sys_read32(PULP_IRQ_FIFO_DATA);
+	uint32_t event_id = sys_read32(PULP_IRQ_FIFO_DATA_GET_REG);
 	int index = event_id >> 5;
 	__soc_event_status[index] |= (1 << (event_id & 0x1f));
 }
