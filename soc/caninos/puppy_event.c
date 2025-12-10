@@ -1,12 +1,11 @@
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
-#include <sys/errno.h>
 
 #include "soc.h"
 
 typedef struct {
 	event_callback_t func;
-	void* userdata;
+	void *userdata;
 } event_desc_s;
 
 static volatile event_desc_s callbacks[SOC_MAX_NUM_EVENT_CALLBACKS];
@@ -16,7 +15,6 @@ static void puppy_event_irq_handler(void *unused)
 	unsigned int key = irq_lock();
 	uint32_t event_num;
 	int i;
-	
 	ARG_UNUSED(unused);
 	event_num = PULP_REG(PULP_IRQ_FIFO_DATA_GET_REG);
 
@@ -28,7 +26,7 @@ static void puppy_event_irq_handler(void *unused)
 	irq_unlock(key);
 }
 
-int puppy_event_register_callback(event_callback_t callback, void* userdata)
+int puppy_event_register_callback(event_callback_t callback, void *userdata)
 {
 	unsigned int key = irq_lock();
 	int ret = -ENOBUFS, i;
@@ -45,7 +43,7 @@ int puppy_event_register_callback(event_callback_t callback, void* userdata)
 	return ret;
 }
 
-int puppy_event_unregister_callback(event_callback_t callback, void* userdata)
+int puppy_event_unregister_callback(event_callback_t callback, void *userdata)
 {
 	unsigned int key = irq_lock();
 	int ret = -EINVAL, i;
@@ -90,7 +88,6 @@ int puppy_event_enable(unsigned int event_num)
 	return ret;
 }
 
-
 int puppy_event_disable(unsigned int event_num)
 {
 	unsigned int key = irq_lock();
@@ -127,5 +124,4 @@ int sys_event_init(void)
 	return 0;
 }
 
-SYS_INIT(sys_event_init, PRE_KERNEL_2, CONFIG_INTC_INIT_PRIORITY);
-
+SYS_INIT(sys_event_init, PRE_KERNEL_1, CONFIG_INTC_INIT_PRIORITY);

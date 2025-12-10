@@ -8,7 +8,6 @@
 
 struct i2c_puppy_data {
 	uint16_t clock_div;
-	struct k_sem lock;
 };
 
 struct i2c_puppy_config {
@@ -22,12 +21,12 @@ struct i2c_puppy_config {
 
 void eot_event(unsigned int event_num, void *dev_ptr)
 {
-	const struct device* dev = (struct device*)dev_ptr;
+	const struct device *dev = (struct device *)dev_ptr;
 	const struct i2c_puppy_config *config = dev->config;
 	struct i2c_puppy_data *data = dev->data;
 
 	if (event_num == ARCHI_UDMA_I2C_EOT_EVT(config->id))
-		k_sem_give(&data->lock);
+		;
 }
 
 static uint16_t i2c_puppy_get_div(int bus_freq)
@@ -58,14 +57,16 @@ static int i2c_puppy_send_addr(const struct device *dev, uint16_t addr, uint16_t
 	while (!plp_udma_canEnqueue(base + UDMA_CHANNEL_TX_OFFSET))
 		;
 
-	k_sem_take(&data->lock, K_FOREVER);
-
 	k_usleep(100);
 	plp_udma_enqueue(base + UDMA_CHANNEL_CMD_OFFSET, (uint32_t)cmd_buf, index * 4,
 			 UDMA_CHANNEL_CFG_SIZE_32);
 	k_usleep(50);
 	plp_udma_enqueue(base + UDMA_CHANNEL_TX_OFFSET, (uint32_t)&i2c_data, 1,
 			 UDMA_CHANNEL_CFG_SIZE_8);
+
+	while (plp_udma_busy(base + UDMA_CHANNEL_TX_OFFSET) ||
+	       plp_udma_busy(base + UDMA_CHANNEL_CMD_OFFSET))
+		;
 
 	return 0;
 }
@@ -93,8 +94,6 @@ static int i2c_puppy_write_msg(const struct device *dev, struct i2c_msg *msg, ui
 
 	cmd_buf[index++] = I2C_CMD_EOT;
 
-	k_sem_take(&data->lock, K_FOREVER);
-
 	plp_udma_enqueue(base + UDMA_CHANNEL_CMD_OFFSET, (uint32_t)cmd_buf, index * 4,
 			 UDMA_CHANNEL_CFG_SIZE_32);
 	k_usleep(50);
@@ -102,8 +101,9 @@ static int i2c_puppy_write_msg(const struct device *dev, struct i2c_msg *msg, ui
 			 UDMA_CHANNEL_CFG_SIZE_8);
 
 #if CONFIG_I2C_W_BLOCKING
-	k_sem_take(&data->lock, K_FOREVER);
-	k_sem_give(&data->lock);
+	while (plp_udma_busy(base + UDMA_CHANNEL_TX_OFFSET) ||
+	       plp_udma_busy(base + UDMA_CHANNEL_CMD_OFFSET))
+		;
 #endif
 
 	return 0;
@@ -132,7 +132,6 @@ static int i2c_puppy_read_msg(const struct device *dev, struct i2c_msg *msg, uin
 
 	while (!plp_udma_canEnqueue(base + UDMA_CHANNEL_RX_OFFSET))
 		;
-	k_sem_take(&data->lock, K_FOREVER);
 
 	k_usleep(50);
 	plp_udma_enqueue(base + UDMA_CHANNEL_CMD_OFFSET, (uint32_t)cmd_buf, index * 4,
@@ -140,6 +139,10 @@ static int i2c_puppy_read_msg(const struct device *dev, struct i2c_msg *msg, uin
 	k_usleep(50);
 	plp_udma_enqueue(base + UDMA_CHANNEL_RX_OFFSET, (uint32_t)msg->buf, msg->len,
 			 UDMA_CHANNEL_CFG_SIZE_8);
+
+	while (plp_udma_busy(base + UDMA_CHANNEL_RX_OFFSET) ||
+	       plp_udma_busy(base + UDMA_CHANNEL_CMD_OFFSET))
+		;
 
 	return 0;
 }
@@ -236,8 +239,6 @@ static int i2c_puppy_init(const struct device *dev)
 
 	data->clock_div = i2c_puppy_get_div(config->bus_freq);
 
-	k_sem_init(&data->lock, 1, 1);
-
 	if (config->id == 1) {
 		config_pad_func(config->sda_pin, 2);
 		config_pad_cfg(config->sda_pin, 0xfe);
@@ -245,8 +246,8 @@ static int i2c_puppy_init(const struct device *dev)
 		config_pad_cfg(config->scl_pin, 0xfe);
 	}
 
-	puppy_event_register_callback(&eot_event, (void*)dev);
-	puppy_event_enable(ARCHI_UDMA_I2C_EOT_EVT(config->id));
+	// puppy_event_register_callback(&eot_event, (void *)dev);
+	// puppy_event_enable(ARCHI_UDMA_I2C_EOT_EVT(config->id));
 
 	return 0;
 }

@@ -188,8 +188,10 @@ typedef enum {
 #define ARCHI_UDMA_CAM_RX_EVT(id) ((UDMA_CAM_ID + id) * 4)
 
 #ifdef CONFIG_SOC_PUPPY_V2
-#define ARCHI_UDMA_UART1_RX_EVT(id) ((UDMA_UART1_ID + id) * 4)
-#define ARCHI_UDMA_UART1_TX_EVT(id) (ARCHI_UDMA_UART1_RX_EVT(id) + 1)
+#define ARCHI_UDMA_UART1_RX_EVT(id)     ((UDMA_UART1_ID + id) * 4)
+#define ARCHI_UDMA_UART1_TX_EVT(id)     (ARCHI_UDMA_UART1_RX_EVT(id) + 1)
+#define ARCHI_UDMA_UART1_EOT_EVT(id)    (ARCHI_UDMA_UART0_RX_EVT(id) + 2)
+#define ARCHI_UDMA_UART1_RX_DAT_EVT(id) (ARCHI_UDMA_UART0_RX_EVT(id) + 3)
 #endif
 
 #define ARCHI_UDMA_FILTER_EOT_EVT(id) ((UDMA_FILTER_ID + id) * 4)

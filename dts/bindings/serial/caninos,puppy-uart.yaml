@@ -1,26 +1,16 @@
 description: >
-    This is a representation of the Puppy UART node
+  This is a representation of the Puppy UART node
 
 include: [uart-controller.yaml, base.yaml]
 
 compatible: "caninos,puppy-uart"
 
 properties:
+  reg:
+    required: true
+    description: mmio register space
 
-    reg:
-      required: true
-      description: mmio register space
-
-    parity-en:
-      type: boolean
-      description: |
-        Configures parity of adapter. false for none, true for even parity.
-
-    uart-id:
-      required: true
-      type: int
-      description: ID of the hardware UART instance 
-
-    interrupts:
-      required: true
-      description: required interrupts
+  uart-id:
+    required: true
+    type: int
+    description: ID of the hardware UART instance

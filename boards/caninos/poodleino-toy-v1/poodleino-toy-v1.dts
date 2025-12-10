@@ -12,6 +12,7 @@
 		zephyr,sram = &sram;
 		zephyr,flash = &flash0;
 		zephyr,console = &uart0;
+        zephyr,shell-uart = &uart0;
     };
 
 	aliases {
@@ -116,7 +117,7 @@
             };
 
             user_sketch: partition@e0000 {
-                reg = <0xe0000 0x10000>;
+                reg = <0xe0000 0x20000>;
             };
         };
     };

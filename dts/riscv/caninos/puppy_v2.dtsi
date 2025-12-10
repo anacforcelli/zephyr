@@ -5,8 +5,6 @@
 		compatible = "caninos,puppy-uart";
 		uart-controller;
 		reg = <0x1a102080 0x54>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		uart-id = <0>;
 	};
 
@@ -15,8 +13,6 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x1a102100 0x28>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		spi-id = <0>;
 	};
 
@@ -25,8 +21,6 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x1a102180 0x28>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		spi-id = <1>;
 	};
 
@@ -35,8 +29,6 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x1a102200 0x34>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		i2c-id = <0>;
 	};
 
@@ -45,8 +37,6 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <0x1a102280 0x34>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		i2c-id = <1>;
 	};
 
@@ -54,8 +44,6 @@
 		compatible = "caninos,puppy-uart";
 		uart-controller;
 		reg = <0x1a102480 0x54>;
-		interrupts = <8>;
-		interrupt-parent = <&intc>;
 		uart-id = <1>;
 	};
 };
