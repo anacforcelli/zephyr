@@ -107,12 +107,12 @@
             };
 
             slot0_partition: partition@20000 {
-                reg = <0x20000 0x60000>;
+                reg = <0x20000 0x40000>;
                 label = "slot0";
             };
 
-            slot1_partition: partition@80000 {
-                reg = <0x80000 0x60000>;
+            slot1_partition: partition@60000 {
+                reg = <0x60000 0x40000>;
                 label = "slot1";
             };
 
