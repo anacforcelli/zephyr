@@ -36,10 +36,18 @@
 	status = "okay";
 };
 
+&mfd {
+	status = "okay";
+};
+
 &smbus0 {
 	status = "okay";
 };
 
 &tco_wdt {
+	status = "okay";
+};
+
+&pwm0 {
 	status = "okay";
 };
