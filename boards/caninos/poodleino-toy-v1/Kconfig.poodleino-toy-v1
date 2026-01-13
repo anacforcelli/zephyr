@@ -1,2 +1,0 @@
-config BOARD_POODLEINO_TOY_V1
-	select SOC_PUPPY_V2

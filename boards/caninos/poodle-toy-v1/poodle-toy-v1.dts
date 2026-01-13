@@ -2,8 +2,8 @@
 #include <mem.h>
 
 / {
-    model = "poodleino-toy-v1";
-    compatible = "caninos,poodleino-toy-v1";
+    model = "poodle-toy-v1";
+    compatible = "caninos,poodle-toy-v1";
 
     chosen {
 		mcuboot,ram-load-dev = &sram;
@@ -114,10 +114,6 @@
             slot1_partition: partition@60000 {
                 reg = <0x60000 0x40000>;
                 label = "slot1";
-            };
-
-            user_sketch: partition@e0000 {
-                reg = <0xe0000 0x20000>;
             };
         };
     };
