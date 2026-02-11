@@ -84,9 +84,9 @@ static int pwm_puppy_get_cycles_per_sec(const struct device *dev, uint32_t chann
 	int clksel = sys_read32(data->base + CFG_OFFSET) >> CLKSEL_OFFSET & 0x1;
 
 	if (clksel) {
-		*cycles = 32768 / (prescaler + 1);
+		*cycles = 32768 / 2;
 	} else {
-		*cycles = sys_clock_hw_cycles_per_sec() / (prescaler + 1);
+		*cycles = sys_clock_hw_cycles_per_sec() / 2;
 	}
 
 	LOG_DBG("%lld cyc/s", *cycles);
@@ -117,13 +117,21 @@ static int pwm_puppy_set_cycles(const struct device *dev, uint32_t channel, uint
 		pulse /= 2;
 	}
 
+	if (period == pulse) {
+		period -= 1; // fix so 100% duty cycle does not fallback to 50% in hardware
+	}
+
 	timer_cg(config->id, 1);
+
+	sys_write32(STOP_TIMER, data->base + CMD_OFFSET);
 
 	sys_write32((sys_read32(data->base + CFG_OFFSET) & 0xff) | prescaler << 16,
 		    data->base + CFG_OFFSET);
-	sys_write32(TIMER_THRESHOLD(period, 0), data->base + THRESH_OFFSET);
-	sys_write32(TIMER_CH_CFG(0x3, pulse), data->base + CH_OFFSET(channel));
 
+	sys_write32(TIMER_THRESHOLD(period, 0), data->base + THRESH_OFFSET);
+	sys_write32(TIMER_CH_CFG(0x6, pulse), data->base + CH_OFFSET(channel));
+
+	sys_write32(RESET_TIMER, data->base + CMD_OFFSET);
 	sys_write32(UPDATE_TIMER, data->base + CMD_OFFSET);
 	sys_write32(START_TIMER, data->base + CMD_OFFSET);
 
