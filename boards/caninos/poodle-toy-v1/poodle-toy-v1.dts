@@ -35,7 +35,7 @@
         compatible = "gpio-keys";
 
         button0: button_0 {
-            gpios = <&gpio0 9 0>; // D3
+            gpios = <&gpio0 13 0>; // D8
             label = "button0";
         };
     };
@@ -72,6 +72,19 @@
 &gpio0 {
     status = "okay";
 };
+
+&pwm1 {
+    status = "okay";
+};
+
+&pwm2 {
+    status = "okay";
+};
+
+&pwm3 {
+    status = "okay";
+};
+
 
 &uart0 {
     status = "okay";
@@ -124,9 +137,3 @@
     clock-frequency = <100000>;
 };
 
-&i2c1 {
-    status = "okay";
-    clock-frequency = <100000>;
-    sda-pin = <24>;
-    scl-pin = <25>;
-};

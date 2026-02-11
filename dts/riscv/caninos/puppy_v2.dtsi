@@ -46,4 +46,32 @@
 		reg = <0x1a102480 0x54>;
 		uart-id = <1>;
 	};
+
+	pwm0: pwm0@1a105000 {
+		compatible = "caninos,puppy-pwm";
+		reg = <0x1a105000 0x40>;
+		pwm-id = <0>;
+		#pwm-cells = <3>;
+	};
+
+	pwm1: pwm1@1a105040 {
+		compatible = "caninos,puppy-pwm";
+		reg = <0x1a105040 0x40>;
+		pwm-id = <1>;
+		#pwm-cells = <3>;
+	};
+
+	pwm2: pwm2@1a105080 {
+		compatible = "caninos,puppy-pwm";
+		reg = <0x1a105080 0x40>;
+		pwm-id = <2>;
+		#pwm-cells = <3>;
+	};
+
+	pwm3: pwm3@1a1050c0 {
+		compatible = "caninos,puppy-pwm";
+		reg = <0x1a1050c0 0x40>;
+		pwm-id = <3>;
+		#pwm-cells = <3>;
+	};
 };
