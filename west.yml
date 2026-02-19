@@ -322,8 +322,10 @@ manifest:
       path: modules/crypto/mbedtls
       groups:
         - crypto
-    - name: mcuboot-puppy
-      revision: 66ca1442
+    - name: mcuboot
+      remote: caninos
+      repo-path: mcuboot-puppy
+      revision: 66ca1442cbc34a39ded4be1b93908ef442e56816
       path: bootloader/mcuboot
       groups:
         - bootloader
