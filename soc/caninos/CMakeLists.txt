@@ -15,9 +15,11 @@ zephyr_sources(
 
 set(output ${ZEPHYR_BINARY_DIR}/${KERNEL_NAME})
 
+if(NOT CONFIG_BOOTLOADER_MCUBOOT)
 set_property(GLOBAL APPEND PROPERTY extra_post_build_commands COMMAND
   mkheader ${output}.bin -o ${output}.header.bin
 )
+endif()
 
 set(SOC_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld CACHE INTERNAL "")
 
