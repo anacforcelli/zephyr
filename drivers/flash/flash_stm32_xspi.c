@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <soc.h>
+#include <stm32_bitops.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/clock_control/stm32_clock_control.h>
 #include <zephyr/drivers/clock_control.h>
@@ -390,7 +391,9 @@ static int stm32_xspi_wait_auto_polling(const struct device *dev,
 
 	if (k_sem_take(&dev_data->sync, K_MSEC(timeout_ms)) != 0) {
 		LOG_ERR("XSPI AutoPoll wait failed");
-		HAL_XSPI_Abort(&dev_data->hxspi);
+		if (HAL_XSPI_Abort(&dev_data->hxspi) != HAL_OK) {
+			LOG_ERR("XSPI abort failed");
+		}
 		k_sem_reset(&dev_data->sync);
 		return -EIO;
 	}
@@ -579,17 +582,12 @@ static int xspi_write_unprotect(const struct device *dev)
 	cmd_unprotect.AddressMode = HAL_XSPI_ADDRESS_NONE;
 	cmd_unprotect.DataMode    = HAL_XSPI_DATA_NONE;
 
-	if (IS_ENABLED(DT_INST_PROP(0, requires_ulbpr))) {
-		ret = stm32_xspi_write_enable(dev, XSPI_SPI_MODE, XSPI_STR_TRANSFER);
-
-		if (ret != 0) {
-			return ret;
-		}
-
-		ret = xspi_send_cmd(dev, &cmd_unprotect);
+	ret = stm32_xspi_write_enable(dev, XSPI_SPI_MODE, XSPI_STR_TRANSFER);
+	if (ret != 0) {
+		return ret;
 	}
 
-	return ret;
+	return xspi_send_cmd(dev, &cmd_unprotect);
 }
 
 /* Write Flash configuration register 2 with new dummy cycles */
@@ -1020,7 +1018,7 @@ static bool stm32_xspi_is_memorymap(const struct device *dev)
 {
 	struct flash_stm32_xspi_data *dev_data = dev->data;
 
-	return READ_BIT(dev_data->hxspi.Instance->CR, XSPI_CR_FMODE) == XSPI_CR_FMODE;
+	return stm32_reg_read_bits(&dev_data->hxspi.Instance->CR, XSPI_CR_FMODE) == XSPI_CR_FMODE;
 }
 #endif
 
@@ -2401,12 +2399,14 @@ static int flash_stm32_xspi_init(const struct device *dev)
 	}
 #endif /* CONFIG_FLASH_PAGE_LAYOUT */
 
-	ret = xspi_write_unprotect(dev);
-	if (ret != 0) {
-		LOG_ERR("write unprotect failed: %d", ret);
-		return -ENODEV;
+	if (IS_ENABLED(DT_INST_PROP(0, requires_ulbpr))) {
+		ret = xspi_write_unprotect(dev);
+		if (ret != 0) {
+			LOG_ERR("write unprotect failed: %d", ret);
+			return -ENODEV;
+		}
+		LOG_DBG("Write Un-protected");
 	}
-	LOG_DBG("Write Un-protected");
 
 #ifdef CONFIG_STM32_MEMMAP
 	ret = stm32_xspi_set_memorymap(dev);
