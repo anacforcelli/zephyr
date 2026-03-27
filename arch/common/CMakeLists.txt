@@ -86,7 +86,7 @@ zephyr_linker_sources_ifdef(CONFIG_NOCACHE_MEMORY
   nocache.ld
 )
 
-if (DEFINED CONFIG_ARCH_SUPPORTS_ROM_OFFSET)
+if(DEFINED CONFIG_ARCH_SUPPORTS_ROM_OFFSET)
   # Exclamation mark is printable character with lowest number in ASCII table.
   # We are sure that this file will be included as a first.
   zephyr_linker_sources(ROM_START SORT_KEY ! rom_start_address.ld)
@@ -98,10 +98,14 @@ if (DEFINED CONFIG_ARCH_SUPPORTS_ROM_OFFSET)
   # Handled in ld.cmake
 endif()
 
+zephyr_library_sources_ifdef(
+  CONFIG_EXCEPTION_DUMP_HOOK
+  exception.c
+)
 
 # isr_tables is a normal CMake library and not a zephyr_library because it
 # should not be --whole-archive'd
-if (CONFIG_GEN_ISR_TABLES)
+if(CONFIG_GEN_ISR_TABLES)
   add_library(isr_tables
     isr_tables.c
   )

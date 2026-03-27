@@ -16,7 +16,13 @@
 #include <zephyr/irq.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#if defined(CONFIG_VIDEO_STM32_VENC_SMH_ALLOC)
 #include <zephyr/multi_heap/shared_multi_heap.h>
+
+#define EWL_HEAP_ALIGNED_ALLOC(size)\
+	shared_multi_heap_aligned_alloc(CONFIG_VIDEO_BUFFER_SMH_ATTRIBUTE, ALIGNMENT_INCR, (size))
+#define EWL_HEAP_ALIGNED_FREE(block) shared_multi_heap_free(block)
+#endif
 
 #include <ewl.h>
 #include <h264encapi.h>
@@ -35,16 +41,33 @@ LOG_MODULE_REGISTER(stm32_venc, CONFIG_VIDEO_LOG_LEVEL);
 
 #define ALIGNMENT_INCR 8UL
 
-#define EWL_HEAP_ALIGNED_ALLOC(size)\
-	shared_multi_heap_aligned_alloc(CONFIG_VIDEO_BUFFER_SMH_ATTRIBUTE, ALIGNMENT_INCR, (size))
-#define EWL_HEAP_ALIGNED_FREE(block) shared_multi_heap_free(block)
-
 #define EWL_TIMEOUT 100UL
 
 #define MEM_CHUNKS 32
 
 #define NUM_SLICES_READY_MASK GENMASK(23, 16)
 #define LOW_LATENCY_HW_ITF_EN 29
+
+#if defined(CONFIG_VIDEO_STM32_VENC_HEAP_ALLOC)
+#if !defined(CONFIG_VIDEO_STM32_VENC_HEAP_ZEPHYR_REGION)
+#define VENC_HEAP_REGION_NAME __noinit_named(kheap_buf_venc_pool)
+#else
+#define VENC_HEAP_REGION_NAME Z_GENERIC_SECTION(CONFIG_VIDEO_STM32_VENC_HEAP_ZEPHYR_REGION_NAME)
+#endif
+
+/*
+ * The k_heap is manually initialized instead of using directly Z_HEAP_DEFINE_IN_SECT
+ * since the section might not be yet accessible from the beginning, making it impossible
+ * to initialize it if done via Z_HEAP_DEFINE_IN_SECT
+ */
+static char VENC_HEAP_REGION_NAME __aligned(8)
+	venc_pool_mem[MAX(CONFIG_VIDEO_STM32_VENC_HEAP_SIZE, Z_HEAP_MIN_SIZE)];
+static struct k_heap venc_pool;
+
+#define EWL_HEAP_ALIGNED_ALLOC(size)	\
+	k_heap_aligned_alloc(&venc_pool, ALIGNMENT_INCR, size, K_NO_WAIT)
+#define EWL_HEAP_ALIGNED_FREE(block) k_heap_free(&venc_pool, block)
+#endif
 
 typedef void (*irq_config_func_t)(const struct device *dev);
 
@@ -63,7 +86,10 @@ struct stm32_venc_ewl {
 	const struct stm32_venc_config *config;
 	struct k_sem complete;
 	uint32_t irq_status;
+
+	/* Stats counters (for debugging) */
 	uint32_t irq_cnt;
+	uint32_t irq_fuse_cnt;
 	uint32_t mem_cnt;
 };
 
@@ -145,6 +171,7 @@ const void *EWLInit(EWLInitParam_t *param)
 	/* set client type */
 	ewl_instance.client_type = param->clientType;
 	ewl_instance.irq_cnt = 0;
+	ewl_instance.irq_fuse_cnt = 0;
 
 	return (void *)&ewl_instance;
 }
@@ -322,71 +349,31 @@ int EWLmemcmp(const void *s1, const void *s2, uint32_t n)
 	return memcmp(s1, s2, n);
 }
 
-i32 EWLWaitHwRdy(const void *instance, uint32_t *slicesReady)
+i32 EWLWaitHwRdy(const void *instance, uint32_t *slices_ready)
 {
 	struct stm32_venc_ewl *inst = (struct stm32_venc_ewl *)instance;
 	const struct stm32_venc_config *config = inst->config;
-	uint32_t ret = EWL_HW_WAIT_TIMEOUT;
-	volatile uint32_t irq_stats;
-	uint32_t prevSlicesReady = 0;
-	k_timepoint_t timeout = sys_timepoint_calc(K_MSEC(EWL_TIMEOUT));
 	uint32_t start = sys_clock_tick_get_32();
 
 	__ASSERT_NO_MSG(inst != NULL);
 
-	/* check how to clear IRQ flags for VENC */
-	uint32_t clrByWrite1 = EWLReadReg(inst, BASE_HWFuse2) & HWCFGIrqClearSupport;
+	if (k_sem_take(&inst->complete, K_MSEC(EWL_TIMEOUT))) {
+		uint32_t irq_status = sys_read32(config->reg + BASE_HEncIRQ);
 
-	do {
-		irq_stats = sys_read32(config->reg + BASE_HEncIRQ);
-		/* get the number of completed slices from ASIC registers. */
-		if (slicesReady != NULL && *slicesReady > prevSlicesReady) {
-			*slicesReady = FIELD_GET(NUM_SLICES_READY_MASK,
-						 sys_read32(config->reg + BASE_HEncControl7));
-		}
-
-		LOG_DBG("IRQ stat = %08x", irq_stats);
-
-		uint32_t hw_handshake_status = IS_BIT_SET(
-			sys_read32(config->reg + BASE_HEncInstantInput), LOW_LATENCY_HW_ITF_EN);
-
-		/* ignore the irq status of input line buffer in hw handshake mode */
-		if ((irq_stats == ASIC_STATUS_LINE_BUFFER_DONE) && (hw_handshake_status != 0UL)) {
-			sys_write32(ASIC_STATUS_FUSE, config->reg + BASE_HEncIRQ);
-			continue;
-		}
-
-		if ((irq_stats & ASIC_STATUS_ALL) != 0UL) {
-			/* clear IRQ and slice ready status */
-			uint32_t clr_stats;
-
-			irq_stats &= ~(ASIC_STATUS_SLICE_READY | ASIC_IRQ_LINE);
-
-			if (clrByWrite1 != 0UL) {
-				clr_stats = ASIC_STATUS_SLICE_READY | ASIC_IRQ_LINE;
-			} else {
-				clr_stats = irq_stats;
-			}
-
-			sys_write32(clr_stats, config->reg + BASE_HEncIRQ);
-			ret = EWL_OK;
-			break;
-		}
-
-		if (slicesReady != NULL && *slicesReady > prevSlicesReady) {
-			ret = EWL_OK;
-			break;
-		}
-
-	} while (!sys_timepoint_expired(timeout));
+		LOG_ERR("timeout, status=0x%x", irq_status);
+		return EWL_HW_WAIT_TIMEOUT;
+	}
 
 	LOG_DBG("encoding = %d ms", k_ticks_to_ms_ceil32(sys_clock_tick_get_32() - start));
 
-	if (slicesReady != NULL) {
-		LOG_DBG("slicesReady = %d", *slicesReady);
+	/* get the number of completed slices from ASIC registers. */
+	if (slices_ready != NULL) {
+		*slices_ready = FIELD_GET(NUM_SLICES_READY_MASK,
+					  sys_read32(config->reg + BASE_HEncControl7));
+		LOG_DBG("slices=%d", *slices_ready);
 	}
 
-	return ret;
+	return EWL_OK;
 }
 
 void EWLassert(bool expr, const char *str_expr, const char *file, unsigned int line)
@@ -409,11 +396,6 @@ static int stm32_venc_enable_clock(const struct device *dev)
 {
 	const struct stm32_venc_config *config = dev->config;
 	const struct device *clk = DEVICE_DT_GET(STM32_CLOCK_CONTROL_NODE);
-
-	if (!device_is_ready(clk)) {
-		LOG_ERR("clock control device not ready");
-		return -ENODEV;
-	}
 
 	if (clock_control_on(clk, (clock_control_subsys_t)&config->pclken) != 0) {
 		return -EIO;
@@ -465,13 +447,16 @@ static int stm32_venc_get_fmt(const struct device *dev, struct video_format *fmt
 
 static int encoder_prepare(struct stm32_venc_data *data)
 {
-	H264EncRet ret;
+	H264EncRet h264ret;
 	H264EncConfig cfg = {0};
 	H264EncPreProcessingCfg preproc_cfg = {0};
 	H264EncRateCtrl ratectrl_cfg = {0};
 	H264EncCodingCtrl codingctrl_cfg = {0};
+	struct stm32_venc_ewl *inst = &ewl_instance;
 
 	data->frame_nb = 0;
+	inst->irq_cnt = 0;
+	inst->irq_fuse_cnt = 0;
 
 	/* set config to 1 reference frame */
 	cfg.refFrameAmount = 1;
@@ -489,42 +474,42 @@ static int encoder_prepare(struct stm32_venc_data *data)
 	cfg.svctLevel = 0;
 	cfg.viewMode = H264ENC_BASE_VIEW_SINGLE_BUFFER;
 
-	ret = H264EncInit(&cfg, &data->encoder);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncInit error=%d", ret);
+	h264ret = H264EncInit(&cfg, &data->encoder);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncInit error=%d", h264ret);
 		return -EIO;
 	}
 
 	/* set format conversion for preprocessing */
-	ret = H264EncGetPreProcessing(data->encoder, &preproc_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncGetPreProcessing error=%d", ret);
+	h264ret = H264EncGetPreProcessing(data->encoder, &preproc_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncGetPreProcessing error=%d", h264ret);
 		return -EIO;
 	}
 	preproc_cfg.inputType = to_h264pixfmt(data->in_fmt.pixelformat);
-	ret = H264EncSetPreProcessing(data->encoder, &preproc_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncSetPreProcessing error=%d", ret);
+	h264ret = H264EncSetPreProcessing(data->encoder, &preproc_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncSetPreProcessing error=%d", h264ret);
 		return -EIO;
 	}
 
 	/* setup coding ctrl */
-	ret = H264EncGetCodingCtrl(data->encoder, &codingctrl_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncGetCodingCtrl error=%d", ret);
+	h264ret = H264EncGetCodingCtrl(data->encoder, &codingctrl_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncGetCodingCtrl error=%d", h264ret);
 		return -EIO;
 	}
 
-	ret = H264EncSetCodingCtrl(data->encoder, &codingctrl_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncSetCodingCtrl error=%d", ret);
+	h264ret = H264EncSetCodingCtrl(data->encoder, &codingctrl_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncSetCodingCtrl error=%d", h264ret);
 		return -EIO;
 	}
 
 	/* set bit rate configuration */
-	ret = H264EncGetRateCtrl(data->encoder, &ratectrl_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncGetRateCtrl error=%d", ret);
+	h264ret = H264EncGetRateCtrl(data->encoder, &ratectrl_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncGetRateCtrl error=%d", h264ret);
 		return -EIO;
 	}
 
@@ -537,9 +522,9 @@ static int encoder_prepare(struct stm32_venc_data *data)
 	ratectrl_cfg.qpMin = ratectrl_cfg.qpHdr;
 	ratectrl_cfg.qpMax = ratectrl_cfg.qpHdr;
 
-	ret = H264EncSetRateCtrl(data->encoder, &ratectrl_cfg);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncSetRateCtrl error=%d", ret);
+	h264ret = H264EncSetRateCtrl(data->encoder, &ratectrl_cfg);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncSetRateCtrl error=%d", h264ret);
 		return -EIO;
 	}
 
@@ -548,22 +533,22 @@ static int encoder_prepare(struct stm32_venc_data *data)
 
 static int encoder_start(struct stm32_venc_data *data, struct video_buffer *output)
 {
-	H264EncRet ret;
-	H264EncIn encIn = {0};
-	H264EncOut encOut = {0};
+	H264EncRet h264ret;
+	H264EncIn enc_in = {0};
+	H264EncOut enc_out = {0};
 
-	encIn.pOutBuf = (uint32_t *)output->buffer;
-	encIn.busOutBuf = (uint32_t)encIn.pOutBuf;
-	encIn.outBufSize = output->size;
+	enc_in.pOutBuf = (uint32_t *)output->buffer;
+	enc_in.busOutBuf = (uint32_t)enc_in.pOutBuf;
+	enc_in.outBufSize = output->size;
 
 	/* create stream */
-	ret = H264EncStrmStart(data->encoder, &encIn, &encOut);
-	if (ret != H264ENC_OK) {
-		LOG_ERR("H264EncStrmStart error=%d", ret);
+	h264ret = H264EncStrmStart(data->encoder, &enc_in, &enc_out);
+	if (h264ret != H264ENC_OK) {
+		LOG_ERR("H264EncStrmStart error=%d", h264ret);
 		return -EIO;
 	}
 
-	output->bytesused = encOut.streamSize;
+	output->bytesused = enc_out.streamSize;
 	LOG_DBG("SPS/PPS generated, size= %d", output->bytesused);
 
 	data->resync = true;
@@ -573,12 +558,15 @@ static int encoder_start(struct stm32_venc_data *data, struct video_buffer *outp
 
 static int encoder_end(struct stm32_venc_data *data)
 {
-	H264EncIn encIn = {0};
-	H264EncOut encOut = {0};
+	struct stm32_venc_ewl *inst = &ewl_instance;
+	H264EncIn enc_in = {0};
+	H264EncOut enc_out = {0};
 
 	if (data->encoder != NULL) {
-		H264EncStrmEnd(data->encoder, &encIn, &encOut);
+		H264EncStrmEnd(data->encoder, &enc_in, &enc_out);
+		H264EncRelease(data->encoder);
 		data->encoder = NULL;
+		inst->mem_cnt = 0;
 	}
 
 	return 0;
@@ -586,11 +574,13 @@ static int encoder_end(struct stm32_venc_data *data)
 
 static int encode_frame(struct stm32_venc_data *data)
 {
-	int ret = H264ENC_FRAME_READY;
+	int ret = 0;
+	H264EncRet h264ret = H264ENC_FRAME_READY;
 	struct video_buffer *input;
 	struct video_buffer *output;
-	H264EncIn encIn = {0};
-	H264EncOut encOut = {0};
+	H264EncIn enc_in = {0};
+	H264EncOut enc_out = {0};
+	struct stm32_venc_ewl *inst = &ewl_instance;
 
 	if (k_fifo_is_empty(&data->in_fifo_in) || k_fifo_is_empty(&data->out_fifo_in)) {
 		/* Encoding deferred to next buffer queueing */
@@ -615,44 +605,48 @@ static int encode_frame(struct stm32_venc_data *data)
 		goto out;
 	}
 
-	/* one key frame every seconds */
+	/* one key frame every VENC_DEFAULT_FRAMERATE frames */
 	if ((data->frame_nb % VENC_DEFAULT_FRAMERATE) == 0 || data->resync) {
 		/* if frame is the first or resync needed: set as intra coded */
-		encIn.codingType = H264ENC_INTRA_FRAME;
+		enc_in.codingType = H264ENC_INTRA_FRAME;
+		data->resync = false;
+
+		LOG_DBG("frames=%d irq=%d fuse=%d", data->frame_nb, inst->irq_cnt,
+			inst->irq_fuse_cnt);
 	} else {
 		/* if there was a frame previously, set as predicted */
-		encIn.timeIncrement = 1;
-		encIn.codingType = H264ENC_PREDICTED_FRAME;
+		enc_in.timeIncrement = 1;
+		enc_in.codingType = H264ENC_PREDICTED_FRAME;
 	}
 
-	encIn.ipf = H264ENC_REFERENCE_AND_REFRESH;
-	encIn.ltrf = H264ENC_REFERENCE;
+	enc_in.ipf = H264ENC_REFERENCE_AND_REFRESH;
+	enc_in.ltrf = H264ENC_REFERENCE;
 
 	/* set input buffers to structures */
-	encIn.busLuma = (ptr_t)input->buffer;
-	encIn.busChromaU = (ptr_t)encIn.busLuma + data->in_fmt.width * data->in_fmt.height;
+	enc_in.busLuma = (ptr_t)input->buffer;
+	enc_in.busChromaU = (ptr_t)enc_in.busLuma + data->in_fmt.width * data->in_fmt.height;
 
-	encIn.pOutBuf = (uint32_t *)output->buffer;
-	encIn.busOutBuf = (uint32_t)encIn.pOutBuf;
-	encIn.outBufSize = output->size;
-	encOut.streamSize = 0;
+	enc_in.pOutBuf = (uint32_t *)output->buffer;
+	enc_in.busOutBuf = (uint32_t)enc_in.pOutBuf;
+	enc_in.outBufSize = output->size;
+	enc_out.streamSize = 0;
 
-	ret = H264EncStrmEncode(data->encoder, &encIn, &encOut, NULL, NULL, NULL);
-	output->bytesused = encOut.streamSize;
-	LOG_DBG("output=%p, encOut.streamSize=%d", output, encOut.streamSize);
+	h264ret = H264EncStrmEncode(data->encoder, &enc_in, &enc_out, NULL, NULL, NULL);
+	output->bytesused = enc_out.streamSize;
+	LOG_DBG("output=%p, enc_out.streamSize=%d", output, enc_out.streamSize);
 
-	switch (ret) {
+	switch (h264ret) {
 	case H264ENC_FRAME_READY:
 		/* save stream */
-		if (encOut.streamSize == 0) {
+		if (enc_out.streamSize == 0) {
 			/* Nothing encoded */
 			data->resync = true;
 			goto out;
 		}
-		output->bytesused = encOut.streamSize;
+		output->bytesused = enc_out.streamSize;
 		break;
 	case H264ENC_FUSE_ERROR:
-		LOG_ERR("H264EncStrmEncode error=%d", ret);
+		LOG_ERR("H264EncStrmEncode error=%d", h264ret);
 
 		LOG_ERR("DCMIPP and VENC desync at frame %d, restart the video", data->frame_nb);
 		encoder_end(data);
@@ -663,7 +657,7 @@ static int encode_frame(struct stm32_venc_data *data)
 		}
 		break;
 	default:
-		LOG_ERR("H264EncStrmEncode error=%d", ret);
+		LOG_ERR("H264EncStrmEncode error=%d", h264ret);
 		LOG_ERR("error encoding frame %d", data->frame_nb);
 
 		encoder_end(data);
@@ -691,12 +685,15 @@ out:
 static int stm32_venc_set_stream(const struct device *dev, bool enable, enum video_buf_type type)
 {
 	struct stm32_venc_data *data = dev->data;
+	struct stm32_venc_ewl *inst = &ewl_instance;
 
 	ARG_UNUSED(type);
 
 	if (!enable) {
 		/* Stop VENC */
 		encoder_end(data);
+		LOG_DBG("frames=%d irq=%d fuse=%d", data->frame_nb, inst->irq_cnt,
+			inst->irq_fuse_cnt);
 	}
 
 	return 0;
@@ -760,6 +757,7 @@ ISR_DIRECT_DECLARE(stm32_venc_isr)
 		sys_write32(ASIC_STATUS_FUSE | ASIC_IRQ_LINE, config->reg + BASE_HEncIRQ);
 		/* read back the IRQ status to update its value */
 		irq_status = sys_read32(config->reg + BASE_HEncIRQ);
+		inst->irq_fuse_cnt++;
 	}
 
 	if (irq_status != 0U) {
@@ -768,9 +766,9 @@ ISR_DIRECT_DECLARE(stm32_venc_isr)
 		 * and signal to EWLWaitHwRdy
 		 */
 		sys_write32(ASIC_STATUS_SLICE_READY | ASIC_IRQ_LINE, config->reg + BASE_HEncIRQ);
-	}
 
-	k_sem_give(&inst->complete);
+		k_sem_give(&inst->complete);
+	}
 
 	return 0;
 }
@@ -830,35 +828,22 @@ static struct stm32_venc_data stm32_venc_data_0 = {};
 
 static const struct stm32_venc_config stm32_venc_config_0 = {
 	.reg = DT_INST_REG_ADDR(0),
-	.pclken = {.bus = DT_INST_CLOCKS_CELL(0, bus), .enr = DT_INST_CLOCKS_CELL(0, bits)},
+	.pclken = STM32_DT_INST_CLOCK_INFO(0),
 	.reset = RESET_DT_SPEC_INST_GET_BY_IDX(0, 0),
 	.irq_config = stm32_venc_irq_config_func,
 };
-
-static void RISAF_Config(void)
-{
-	/* Define and initialize the master configuration structure */
-	RIMC_MasterConfig_t RIMC_master = {0};
-
-	/* Enable the clock for the RIFSC (RIF Security Controller) */
-	__HAL_RCC_RIFSC_CLK_ENABLE();
-
-	RIMC_master.MasterCID = RIF_CID_1;
-	RIMC_master.SecPriv = RIF_ATTRIBUTE_SEC | RIF_ATTRIBUTE_PRIV;
-
-	/* Configure the master attributes for the video encoder peripheral (VENC) */
-	HAL_RIF_RIMC_ConfigMasterAttributes(RIF_MASTER_INDEX_VENC, &RIMC_master);
-
-	/* Set the secure and privileged attributes for the VENC as a slave */
-	HAL_RIF_RISC_SetSlaveSecureAttributes(RIF_RISC_PERIPH_INDEX_VENC,
-					      RIF_ATTRIBUTE_SEC | RIF_ATTRIBUTE_PRIV);
-}
 
 static int stm32_venc_init(const struct device *dev)
 {
 	const struct stm32_venc_config *config = dev->config;
 	struct stm32_venc_data *data = dev->data;
 	int err;
+
+#if defined(CONFIG_VIDEO_STM32_VENC_HEAP_ALLOC)
+	/* Initialize the VENC internal buffers dedicated HEAP */
+	k_heap_init(&venc_pool, venc_pool_mem,
+		    MAX(CONFIG_VIDEO_STM32_VENC_HEAP_SIZE, Z_HEAP_MIN_SIZE));
+#endif
 
 	/* Enable VENC clock */
 	err = stm32_venc_enable_clock(dev);
@@ -883,8 +868,6 @@ static int stm32_venc_init(const struct device *dev)
 
 	/* Run IRQ init */
 	config->irq_config(dev);
-
-	RISAF_Config();
 
 	LOG_DBG("CPU frequency    : %d", HAL_RCC_GetCpuClockFreq() / 1000000);
 	LOG_DBG("sysclk frequency : %d", HAL_RCC_GetSysClockFreq() / 1000000);

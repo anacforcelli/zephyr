@@ -128,7 +128,7 @@ if(NOT ${PUNCOVER} STREQUAL PUNCOVER-NOTFOUND)
     puncover
     ${PUNCOVER}
     --elf_file       ${ZEPHYR_BINARY_DIR}/${KERNEL_ELF_NAME}
-    --gcc_tools_base ${CROSS_COMPILE}
+    --gcc-tools-base ${CROSS_COMPILE}
     --src_root       ${ZEPHYR_BASE}
     --build_dir      ${CMAKE_BINARY_DIR}
     ${PUNCOVER_ARGS}
@@ -156,3 +156,16 @@ if(NOT ${PAHOLE} STREQUAL PAHOLE-NOTFOUND)
     USES_TERMINAL
     )
 endif()
+
+add_custom_target(
+  dashboard
+  ${PYTHON_EXECUTABLE}
+  ${ZEPHYR_BASE}/scripts/dashboard/dashboard.py
+  --output ${CMAKE_BINARY_DIR}/dashboard
+  --zephyr-base ${ZEPHYR_BASE}
+  --kernel-bin-name ${CONFIG_KERNEL_BIN_NAME}
+  --open
+  ${CMAKE_BINARY_DIR}
+  DEPENDS ${logical_target_for_zephyr_elf}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )

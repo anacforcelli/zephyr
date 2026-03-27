@@ -10,7 +10,6 @@
 #include <zephyr/input/input.h>
 #include <zephyr/input/input_kbd_matrix.h>
 #include <zephyr/kernel.h>
-#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/pm/device.h>
 #include <zephyr/pm/device_runtime.h>
@@ -26,7 +25,7 @@ void input_kbd_matrix_poll_start(const struct device *dev)
 	k_sem_give(&data->poll_lock);
 }
 
-static bool input_kbd_matrix_ghosting(const struct device *dev)
+bool input_kbd_matrix_ghosting(const struct device *dev)
 {
 	const struct input_kbd_matrix_common_config *cfg = dev->config;
 	const kbd_row_t *state = cfg->matrix_new_state;
@@ -132,7 +131,7 @@ static bool input_kbd_matrix_scan(const struct device *dev)
 	return key_event != 0U;
 }
 
-static void input_kbd_matrix_update_state(const struct device *dev)
+void input_kbd_matrix_update_state(const struct device *dev)
 {
 	const struct input_kbd_matrix_common_config *cfg = dev->config;
 	struct input_kbd_matrix_common_data *data = dev->data;
@@ -309,7 +308,7 @@ static void input_kbd_matrix_poll(const struct device *dev)
 		} else {
 			poll_period_us = cfg->stable_poll_period_us;
 		}
-		wait_period_us = CLAMP(poll_period_us - k_cyc_to_us_floor32(cycles_diff),
+		wait_period_us = clamp(poll_period_us - k_cyc_to_us_floor32(cycles_diff),
 				       USEC_PER_MSEC, poll_period_us);
 
 		LOG_DBG("wait_period_us: %d", wait_period_us);
