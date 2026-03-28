@@ -1,5 +1,7 @@
 /dts-v1/;
 
+#include <freq.h>
+#include <mem.h>
 #include "zephyr/dt-bindings/gpio/gpio.h"
 
 / {
@@ -15,25 +17,32 @@
 			device_type = "cpu";
 			status = "okay";
 			compatible = "riscv";
-			riscv,isa = "rv32imfc_zicsr";
+			riscv,isa-base = "rv32i";
+			riscv,isa-extensions = "i", "m", "f", "c", "zicsr";
 			reg = <0>;
 		};
 	};
 
 	soc: soc {
-		#address-cells = <0x01>;
-		#size-cells = <0x01>;
+		#address-cells = <1>;
+		#size-cells = <1>;
 
-		bootram: bootram@1c000000 {
-			device_type = "memory";
-			reg = <0x1c000000 0x10000>;
-			status="okay";
+		dtcm: dtcm@1c000000 {
+			compatible = "zephyr,memory-region";
+			reg = <0x1c000000 DT_SIZE_K(32)>;
+			zephyr,memory-region = "DTCM";
+		};
+
+		itcm: itcm@1c008000 {
+			compatible = "zephyr,memory-region";
+			reg = <0x1c008000 DT_SIZE_K(32)>;
+			zephyr,memory-region = "ITCM";
 		};
 
 		sram: sram@1c010000 {
-			device_type = "memory";
-			reg = <0x1c010000 0x40000>;
-			status="okay";
+			compatible = "mmio-sram";
+			reg = <0x1c010000 DT_SIZE_K(256)>;
+			status = "okay";
 		};
 
 		gpio0: gpio@1a101000 {

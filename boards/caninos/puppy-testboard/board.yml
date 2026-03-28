@@ -1,5 +1,6 @@
 board:
   name: puppy-testboard
+  full_name: Puppy Testboard
   vendor: caninos
   socs:
   - name: puppy_v1

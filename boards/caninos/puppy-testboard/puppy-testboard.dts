@@ -9,11 +9,11 @@
 		mcuboot,ram-load-dev = &sram;
 		zephyr,code-partition = &slot0_partition;
 		zephyr,flash-controller = &spi0;
+		zephyr,itcm = &itcm;
+		zephyr,dtcm = &dtcm;
 		zephyr,sram = &sram;
 		zephyr,flash = &flash0;
 		zephyr,console = &uart0;
-		//zephyr,shell-uart = &uart1;
-		zephyr,uart-mcumgr = &uart0;
 	};
 
 	aliases {
