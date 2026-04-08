@@ -325,7 +325,7 @@ manifest:
     - name: mcuboot
       remote: caninos
       repo-path: mcuboot-puppy
-      revision: 66ca1442cbc34a39ded4be1b93908ef442e56816
+      revision: 6e704e6928aa7234fbcb318066c36ed7655f7dc8
       path: bootloader/mcuboot
       groups:
         - bootloader
