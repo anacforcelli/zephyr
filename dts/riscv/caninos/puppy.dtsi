@@ -31,12 +31,14 @@
 			compatible = "zephyr,memory-region";
 			reg = <0x1c000000 DT_SIZE_K(32)>;
 			zephyr,memory-region = "DTCM";
+			status = "okay";
 		};
 
 		itcm: itcm@1c008000 {
 			compatible = "zephyr,memory-region";
 			reg = <0x1c008000 DT_SIZE_K(32)>;
 			zephyr,memory-region = "ITCM";
+			status = "okay";
 		};
 
 		sram: sram@1c010000 {
