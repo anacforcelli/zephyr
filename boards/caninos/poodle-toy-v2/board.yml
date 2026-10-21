@@ -1,0 +1,6 @@
+board:
+  name: poodle-toy-v2
+  full_name: Poodle Toy V2
+  vendor: caninos
+  socs:
+    - name: puppy_v1

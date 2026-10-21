@@ -54,6 +54,7 @@ _names = [
     'nxp_s32dbg',
     'openocd',
     'probe_rs',
+    'puppyprog',
     'pyocd',
     'qemu',
     'renode',

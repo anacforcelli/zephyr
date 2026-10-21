@@ -1,0 +1,9 @@
+# Kconfig.puppy - puppy GPIO configuration option
+
+config GPIO_PUPPY
+	bool "Puppy GPIO controller driver"
+	default y
+	depends on DT_HAS_CANINOS_PUPPY_GPIO_ENABLED
+	help
+	  Enable driver for the Puppy GPIO controller.
+	  Says n if not sure.
